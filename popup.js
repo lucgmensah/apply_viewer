@@ -60,7 +60,6 @@ function openDashboard() {
 // Détecter l'offre sur la page active
 function detectActiveJobDetails() {
   if (typeof chrome === 'undefined' || !chrome.tabs) {
-    // Mode test hors extension : pré-remplir l'URL courante de test
     quickUrl.value = window.location.href;
     return;
   }
@@ -71,20 +70,17 @@ function detectActiveJobDetails() {
     const activeTab = tabs[0];
     quickUrl.value = activeTab.url || '';
 
-    // Envoyer un message au content script de la page active pour scraper les détails
-    chrome.tabs.sendMessage(activeTab.id, { action: "getJobDetails" }, (response) => {
-      // Ignorer les erreurs si le script de contenu n'est pas injecté sur cette page
-      if (chrome.runtime.lastError) {
-        // Fallback de base : pré-remplir le titre avec le titre de la page web
-        if (activeTab.title) {
-          // Ex: "Job Offer for Dev at Google - LinkedIn" -> nettoyer un peu ou préremplir
-          quickTitle.value = activeTab.title.split(' | ')[0].split(' - ')[0];
-        }
-        return;
+    // Ne pas tenter d'injecter ou de scraper sur les pages internes de Chrome
+    if (!activeTab.url || activeTab.url.startsWith('chrome://') || activeTab.url.startsWith('chrome-extension://') || activeTab.url.startsWith('about:')) {
+      if (activeTab.title) {
+        quickTitle.value = activeTab.title.split(' | ')[0].split(' - ')[0];
       }
+      return;
+    }
 
+    // Traitement de la réponse de scraping
+    const processScrapedDetails = (response) => {
       if (response && response.success) {
-        // Remplissage automatique !
         quickTitle.value = response.title || '';
         quickCompany.value = response.company || '';
         quickLocation.value = response.location || '';
@@ -92,9 +88,54 @@ function detectActiveJobDetails() {
         
         // Afficher l'alerte verte/bleu nuit de détection automatique
         scrapingAlert.classList.remove('hidden');
+      } else {
+        // Fallback de base si le scraping s'exécute mais ne trouve rien de spécifique
+        fallbackToTabDetails(activeTab);
+      }
+    };
+
+    // Envoyer le message au script de contenu
+    chrome.tabs.sendMessage(activeTab.id, { action: "getJobDetails" }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Le script de contenu n'est pas injecté (par exemple onglet ouvert avant installation)
+        // Injecter dynamiquement content.js à l'aide de l'API de scripting
+        chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          files: ['content.js']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            // Échec d'injection (ex: page restreinte ou erreur de droit)
+            fallbackToTabDetails(activeTab);
+            return;
+          }
+          
+          // Réessayer d'envoyer le message après injection réussie
+          chrome.tabs.sendMessage(activeTab.id, { action: "getJobDetails" }, (response2) => {
+            if (chrome.runtime.lastError) {
+              fallbackToTabDetails(activeTab);
+              return;
+            }
+            processScrapedDetails(response2);
+          });
+        });
+      } else {
+        processScrapedDetails(response);
       }
     });
   });
+}
+
+// Fallback de base sur les infos de l'onglet
+function fallbackToTabDetails(tab) {
+  if (tab.title) {
+    // Nettoyer les suffixes habituels pour pré-remplir le titre proprement
+    quickTitle.value = tab.title
+      .split(' | ')[0]
+      .split(' - ')[0]
+      .replace(/Offre d'emploi/i, '')
+      .trim();
+  }
+  quickUrl.value = tab.url || '';
 }
 
 // Enregistrer la candidature
@@ -124,7 +165,7 @@ function handleQuickAdd(e) {
       scrapingAlert.classList.add('hidden');
       successMsg.classList.remove('hidden');
       
-      // Fermer automatiquement après 1.5s
+      // Fermer automatiquement après 1.8s
       setTimeout(() => {
         window.close();
       }, 1800);

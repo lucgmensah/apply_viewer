@@ -1,4 +1,4 @@
-// --- SCRIPT DE CONTENU DE L'EXTENSION ---
+// --- SCRIPT DE CONTENU DE L'EXTENSION (VERSION AMÉLIORÉE) ---
 
 // Écouter les messages venant de la pop-up
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -10,7 +10,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: false, error: e.toString() });
     }
   }
-  return true; // Garder le canal de communication ouvert pour la réponse asynchrone
+  // Ne pas retourner true car sendResponse est appelé de façon synchrone
 });
 
 // Fonction principale de scraping
@@ -27,21 +27,22 @@ function scrapeJobDetails() {
       ".job-details-jobs-unified-top-card__job-title",
       ".jobs-unified-top-card__job-title",
       "h1.t-24",
+      ".jobs-details-top-card__job-title",
       ".p5 h1",
       "h1"
     ].join(","));
-    title = titleEl ? titleEl.textContent.trim() : "";
+    title = titleEl ? titleEl.textContent : "";
 
-    // Entreprise
+    // Entreprise (sélecteurs par classes et par pattern d'URL /company/)
     const companyEl = document.querySelector([
       ".job-details-jobs-unified-top-card__company-name a",
       ".jobs-unified-top-card__company-name a",
+      "a[href*='/company/']",
       ".jobs-unified-top-card__company-name",
       ".jobs-unified-top-card__primary-description a",
-      ".jobs-details-top-card__company-url",
       ".p5 a"
     ].join(","));
-    company = companyEl ? companyEl.textContent.trim() : "";
+    company = companyEl ? companyEl.textContent : "";
 
     // Lieu
     const locEl = document.querySelector([
@@ -50,7 +51,10 @@ function scrapeJobDetails() {
       ".jobs-unified-top-card__primary-description span",
       ".jobs-details-top-card__bullet"
     ].join(","));
-    location = locEl ? locEl.textContent.trim().split("·")[0].split("  ")[0].trim() : "";
+    location = locEl ? locEl.textContent : "";
+    if (location) {
+      location = location.trim().split("·")[0].split("  ")[0];
+    }
   } 
   
   // 2. Indeed
@@ -62,17 +66,18 @@ function scrapeJobDetails() {
       "h1.jobTitle",
       "h1"
     ].join(","));
-    title = titleEl ? titleEl.textContent.trim() : "";
+    title = titleEl ? titleEl.textContent : "";
 
-    // Entreprise
+    // Entreprise (sélecteurs par classes et par pattern d'URL /cmp/)
     const companyEl = document.querySelector([
       "div.jobsearch-CompanyInfoContainer a",
+      "a[href*='/cmp/']",
       "[data-company-name='true']",
       ".jobsearch-InlineCompanyRating a",
       ".jobsearch-CompanyReview--heading a",
       ".jobsearch-InlineCompanyRating div"
     ].join(","));
-    company = companyEl ? companyEl.textContent.trim() : "";
+    company = companyEl ? companyEl.textContent : "";
 
     // Lieu
     const locEl = document.querySelector([
@@ -82,20 +87,20 @@ function scrapeJobDetails() {
       "[data-testid='job-location']",
       ".jobsearch-JobInfoContainer .jobsearch-JobInfoHeader-subtitle"
     ].join(","));
-    location = locEl ? locEl.textContent.trim() : "";
+    location = locEl ? locEl.textContent : "";
   } 
   
   // 3. Welcome to the Jungle
   else if (url.includes("welcometothejungle.com")) {
     // Titre de l'offre
     const titleEl = document.querySelector([
+      "[data-testid='job-header-title']",
       "h1",
-      "h2",
-      "[data-testid='job-header-title']"
+      "h2"
     ].join(","));
-    title = titleEl ? titleEl.textContent.trim() : "";
+    title = titleEl ? titleEl.textContent : "";
 
-    // Entreprise
+    // Entreprise (sélecteur par pattern d'URL /companies/)
     const companyEl = document.querySelector([
       "a[href*='/companies/'] h4",
       "a[href*='/companies/'] span",
@@ -104,9 +109,9 @@ function scrapeJobDetails() {
     ].join(","));
     
     if (companyEl && !companyEl.textContent.includes(title)) {
-      company = companyEl.textContent.trim();
+      company = companyEl.textContent;
     } else {
-      // Essayer d'extraire depuis l'URL: welcometothejungle.com/fr/companies/societe/jobs/...
+      // Extraction secours via l'URL : welcometothejungle.com/fr/companies/societe/jobs/...
       const match = url.match(/\/companies\/([^/]+)/);
       if (match && match[1]) {
         company = match[1]
@@ -119,10 +124,9 @@ function scrapeJobDetails() {
     const locEl = document.querySelector([
       "[data-testid='job-metadata-location']",
       "span[title*='Lieu']",
-      "i.wttj-icon-location + span",
-      ".sc-bXfJDx"
+      "i.wttj-icon-location + span"
     ].join(","));
-    location = locEl ? locEl.textContent.trim() : "";
+    location = locEl ? locEl.textContent : "";
   }
 
   // --- COMPORTEMENT DE SECOURS (OG Tags) ---
@@ -135,12 +139,12 @@ function scrapeJobDetails() {
     company = ogSite ? ogSite.getAttribute("content") : "";
   }
 
-  // Nettoyage des chaînes de caractères (retirer sauts de ligne et espaces superflus)
-  title = title ? title.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
-  company = company ? company.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
-  location = location ? location.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
+  // Nettoyage sécurisé des chaînes de caractères
+  title = title ? String(title).replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
+  company = company ? String(company).replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
+  location = location ? String(location).replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim() : "";
 
-  // Filtres pour ne pas renvoyer le nom du site comme nom d'entreprise
+  // Filtres pour ne pas renvoyer le nom du site
   if (company.toLowerCase() === "linkedin" && url.includes("linkedin.com")) company = "";
   if (company.toLowerCase() === "indeed" && url.includes("indeed.com")) company = "";
   if (company.toLowerCase() === "welcome to the jungle" && url.includes("welcometothejungle")) company = "";
