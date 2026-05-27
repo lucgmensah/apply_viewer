@@ -19,7 +19,14 @@ window.addEventListener('load', () => {
     try {
       const details = scrapeJobDetails();
       if (details && details.success) {
-        injectFloatingWidget(details);
+        // Vérifier si cette offre est déjà suivie
+        checkIfAlreadyTracked(details.url, details.title, details.company, (alreadyTracked) => {
+          if (alreadyTracked) {
+            injectAlreadyTrackedWidget(details);
+          } else {
+            injectFloatingWidget(details);
+          }
+        });
       }
     } catch (e) {
       console.error("Erreur lors de l'initialisation du widget de suivi :", e);
@@ -27,24 +34,73 @@ window.addEventListener('load', () => {
   }, 2000);
 });
 
-// --- ENREGISTREMENT DANS LE STOCKAGE DPUIS LE WIDGET ---
+// Vérifier si l'offre est déjà enregistrée (par URL ou par couple titre+entreprise si pas d'URL)
+function checkIfAlreadyTracked(url, title, company, callback) {
+  const checkDuplicate = (list) => {
+    return list.some(c => {
+      // Nettoyage pour comparaison insensible à la casse
+      const t1 = (c.title || '').trim().toLowerCase();
+      const t2 = (title || '').trim().toLowerCase();
+      const comp1 = (c.company || '').trim().toLowerCase();
+      const comp2 = (company || '').trim().toLowerCase();
+      
+      // Si on a l'URL de l'offre (cas le plus courant)
+      if (url && c.url) {
+        // Enlever les paramètres de tracking éventuels pour comparer l'URL brute
+        const cleanUrl1 = c.url.split('?')[0].split('#')[0];
+        const cleanUrl2 = url.split('?')[0].split('#')[0];
+        if (cleanUrl1 === cleanUrl2) return true;
+      }
+      
+      // Sinon comparaison sur titre + entreprise
+      return t1 === t2 && comp1 === comp2;
+    });
+  };
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['candidatures'], function(result) {
+      callback(checkDuplicate(result.candidatures || []));
+    });
+  } else {
+    const data = localStorage.getItem('job_tracker_candidatures');
+    callback(checkDuplicate(data ? JSON.parse(data) : []));
+  }
+}
+
+// --- ENREGISTREMENT DANS LE STOCKAGE DEPUIS LE WIDGET ---
 function saveJobFromWidget(jobData, callback) {
+  const save = (list) => {
+    // Vérification de sécurité doublon de dernière seconde
+    const isDup = list.some(c => 
+      (c.url && c.url === jobData.url) || 
+      (c.title.toLowerCase() === jobData.title.toLowerCase() && c.company.toLowerCase() === jobData.company.toLowerCase())
+    );
+    if (isDup) {
+      alert("Cette candidature est déjà enregistrée !");
+      return;
+    }
+    list.unshift(jobData);
+    return list;
+  };
+
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(['candidatures'], function(result) {
       const list = result.candidatures || [];
-      // Ajouter au début
-      list.unshift(jobData);
-      chrome.storage.local.set({ candidatures: list }, function() {
-        if (callback) callback();
-      });
+      const updatedList = save(list);
+      if (updatedList) {
+        chrome.storage.local.set({ candidatures: updatedList }, function() {
+          if (callback) callback();
+        });
+      }
     });
   } else {
-    // Fallback développement
     const data = localStorage.getItem('job_tracker_candidatures');
     const list = data ? JSON.parse(data) : [];
-    list.unshift(jobData);
-    localStorage.setItem('job_tracker_candidatures', JSON.stringify(list));
-    if (callback) callback();
+    const updatedList = save(list);
+    if (updatedList) {
+      localStorage.setItem('job_tracker_candidatures', JSON.stringify(updatedList));
+      if (callback) callback();
+    }
   }
 }
 
@@ -527,6 +583,82 @@ function injectFloatingWidget(details) {
         container.style.display = 'none';
       }, 2000);
     });
+  });
+}
+
+// --- WIDGET POUR OFFRE DÉJÀ SUIVIE ---
+function injectAlreadyTrackedWidget(details) {
+  if (document.getElementById('job-tracker-floating-root')) return;
+
+  const host = document.createElement('div');
+  host.id = 'job-tracker-floating-root';
+  document.body.appendChild(host);
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+    .widget-container {
+      font-family: 'Outfit', sans-serif;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99999999;
+      color: #0B192C;
+    }
+
+    .widget-trigger-saved {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: #FFFFFF;
+      border: 2px solid #0B192C;
+      color: #0B192C;
+      padding: 10px 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(11, 25, 44, 0.15);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .widget-trigger-saved:hover {
+      transform: translateY(-2px);
+      background-color: #F8FAFC;
+    }
+
+    .icon-check {
+      width: 16px;
+      height: 16px;
+      color: #0B192C;
+    }
+  `;
+
+  const container = document.createElement('div');
+  container.className = 'widget-container';
+  container.innerHTML = `
+    <div class="widget-trigger-saved" id="btn-open-db">
+      <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span>Offre déjà suivie</span>
+    </div>
+  `;
+
+  shadow.appendChild(style);
+  shadow.appendChild(container);
+
+  shadow.getElementById('btn-open-db').addEventListener('click', () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+      const dbUrl = chrome.runtime.getURL('dashboard.html');
+      window.open(dbUrl, '_blank');
+    } else {
+      window.open('dashboard.html', '_blank');
+    }
   });
 }
 

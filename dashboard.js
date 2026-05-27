@@ -348,6 +348,31 @@ function handleSaveCandidature(e) {
     notes: fieldNotes.value.trim()
   };
 
+  // Détection des doublons (exclure l'élément en cours de modification)
+  const isDuplicate = allCandidatures.some(c => {
+    if (c.id === id) return false;
+
+    const t1 = (c.title || '').trim().toLowerCase();
+    const t2 = (candidatureData.title || '').trim().toLowerCase();
+    const comp1 = (c.company || '').trim().toLowerCase();
+    const comp2 = (candidatureData.company || '').trim().toLowerCase();
+
+    // 1. Comparer l'URL (sans paramètres de tracking)
+    if (candidatureData.url && c.url) {
+      const cleanUrl1 = c.url.split('?')[0].split('#')[0];
+      const cleanUrl2 = candidatureData.url.split('?')[0].split('#')[0];
+      if (cleanUrl1 === cleanUrl2) return true;
+    }
+
+    // 2. Vérification par titre + entreprise
+    return t1 === t2 && comp1 === comp2;
+  });
+
+  if (isDuplicate) {
+    alert("Une candidature avec ce lien ou ce poste chez cette entreprise existe déjà !");
+    return;
+  }
+
   if (id) {
     // Modification
     allCandidatures = allCandidatures.map(c => c.id === id ? candidatureData : c);
