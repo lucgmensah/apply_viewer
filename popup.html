@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Suivi de Candidatures</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <header class="popup-header">
+    <div class="brand">
+      <img src="images/icon-32.png" alt="Logo" class="logo">
+      <span>Job Tracker</span>
+    </div>
+    <button id="btn-open-dashboard" class="btn-icon-only" title="Ouvrir le Tableau de Bord">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main class="popup-content">
+    
+    <div id="scraping-alert" class="scraping-alert hidden">
+      <svg class="alert-icon" viewBox="0 0 24 24" width="16" height="16">
+        <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+      </svg>
+      <span>Offre détectée automatiquement !</span>
+    </div>
+
+    <form id="quick-add-form">
+      <div class="form-group">
+        <label for="quick-title">Poste *</label>
+        <input type="text" id="quick-title" required placeholder="ex: Développeur Web">
+      </div>
+      
+      <div class="form-group">
+        <label for="quick-company">Entreprise *</label>
+        <input type="text" id="quick-company" required placeholder="ex: Google">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="quick-status">Statut</label>
+          <select id="quick-status">
+            <option value="wishlist">À postuler</option>
+            <option value="applied">Candidature envoyée</option>
+            <option value="interview">Entretien</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="quick-location">Lieu</label>
+          <input type="text" id="quick-location" placeholder="ex: Paris / Remote">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="quick-url">URL de l'offre</label>
+        <input type="url" id="quick-url" placeholder="https://...">
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="btn-save" class="btn btn-solid">
+          Enregistrer
+        </button>
+        <button type="button" id="btn-go-dashboard" class="btn btn-outline">
+          Voir mon tableau de bord
+        </button>
+      </div>
+    </form>
+    
+    <div id="success-msg" class="success-message hidden">
+      <svg viewBox="0 0 24 24" width="28" height="28" class="success-icon">
+        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      </svg>
+      <p>Candidature enregistrée avec succès !</p>
+    </div>
+
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
