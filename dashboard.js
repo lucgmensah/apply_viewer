@@ -187,12 +187,7 @@ function createJobCard(c) {
   card.className = 'job-card';
   card.setAttribute('draggable', 'true');
   card.dataset.id = c.id;
-
-  // Définir la bordure gauche selon le statut
-  let statusColor = '#0B192C';
-  if (c.status === 'interview') statusColor = '#1E3E62';
-  if (c.status === 'offer') statusColor = '#0B192C'; // palette restreinte
-  card.style.borderLeftColor = statusColor;
+  card.dataset.status = c.status;
 
   // Formater la date en FR (JJ/MM/AAAA)
   let dateFormatted = '';

@@ -14,67 +14,87 @@
   <!-- HEADER -->
   <header class="app-header">
     <div class="header-left">
-      <img src="images/icon-48.png" alt="Logo" class="app-logo">
-      <div class="logo-text">
-        <h1>Suivi de Candidatures</h1>
-        <p>Gérez vos opportunités professionnelles</p>
-      </div>
+      <div class="brand-capsule">Crextio</div>
+      <nav class="header-nav">
+        <span class="nav-item active">Dashboard</span>
+        <span class="nav-item">Candidatures</span>
+        <span class="nav-item">Entretiens</span>
+        <span class="nav-item">Statistiques</span>
+      </nav>
     </div>
     
-    <div class="header-center">
+    <div class="header-right">
       <div class="search-box">
         <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
-        <input type="text" id="search-input" placeholder="Rechercher une entreprise, un poste...">
+        <input type="text" id="search-input" placeholder="Rechercher...">
       </div>
-    </div>
-
-    <div class="header-right">
+      
       <button id="btn-export" class="btn btn-outline" title="Exporter vers Excel (CSV)">
-        <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18">
-          <path fill="currentColor" d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
-        </svg>
         Exporter Excel
       </button>
+      
       <button id="btn-add" class="btn btn-solid">
-        <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18">
-          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-        </svg>
         Nouvelle Candidature
       </button>
+      
+      <button class="btn-settings-icon" title="Paramètres">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+      
+      <div class="user-avatar" title="Sophie Martin">SM</div>
     </div>
   </header>
 
   <main class="app-content">
     
-    <!-- STATS OVERVIEW -->
-    <section class="stats-overview">
-      <div class="stat-card" data-filter="all">
-        <span class="stat-value" id="stat-total">0</span>
-        <span class="stat-label">Total candidatures</span>
+    <!-- STATS OVERVIEW & GREETING -->
+    <div class="welcome-section">
+      <div class="welcome-left">
+        <h1 class="welcome-title">Welcome in, Nixtio</h1>
+        <div class="welcome-pills">
+          <div class="stat-card metric-pill active" data-filter="wishlist">
+            <span>À postuler</span>
+            <span class="pill-percentage" id="stat-wishlist">0</span>
+          </div>
+          <div class="stat-card metric-pill yellow" data-filter="offer">
+            <span>Offres</span>
+            <span class="pill-percentage" id="stat-offer">0</span>
+          </div>
+          <div class="stat-card metric-pill outline" data-filter="rejected">
+            <span>Refusées</span>
+            <span class="pill-percentage" id="stat-rejected">0</span>
+          </div>
+        </div>
       </div>
-      <div class="stat-card" data-filter="wishlist">
-        <span class="stat-value" id="stat-wishlist">0</span>
-        <span class="stat-label">À postuler</span>
+      
+      <div class="welcome-right-stats">
+        <div class="stat-card metric-number-card" data-filter="all">
+          <div class="metric-number-val">
+            <svg viewBox="0 0 24 24" width="20" height="20" class="metric-icon"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span id="stat-total">0</span>
+          </div>
+          <span class="metric-number-label">Total candidatures</span>
+        </div>
+        <div class="stat-card metric-number-card" data-filter="applied">
+          <div class="metric-number-val">
+            <svg viewBox="0 0 24 24" width="20" height="20" class="metric-icon"><path fill="currentColor" d="M22 13h-8v-2h8v2zm0-6h-8v2h8V7zm0 12h-8v2h8v-2zm-10-8v2H2v-2h10zm0-6v2H2V5h10zm0 12v2H2v-2h10z"/></svg>
+            <span id="stat-applied">0</span>
+          </div>
+          <span class="metric-number-label">Envoyées</span>
+        </div>
+        <div class="stat-card metric-number-card" data-filter="interview">
+          <div class="metric-number-val">
+            <svg viewBox="0 0 24 24" width="20" height="20" class="metric-icon"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <span id="stat-interview">0</span>
+          </div>
+          <span class="metric-number-label">Entretiens</span>
+        </div>
       </div>
-      <div class="stat-card" data-filter="applied">
-        <span class="stat-value" id="stat-applied">0</span>
-        <span class="stat-label">Envoyées</span>
-      </div>
-      <div class="stat-card" data-filter="interview">
-        <span class="stat-value" id="stat-interview">0</span>
-        <span class="stat-label">Entretiens</span>
-      </div>
-      <div class="stat-card" data-filter="offer">
-        <span class="stat-value" id="stat-offer">0</span>
-        <span class="stat-label">Offres reçues</span>
-      </div>
-      <div class="stat-card" data-filter="rejected">
-        <span class="stat-value" id="stat-rejected">0</span>
-        <span class="stat-label">Refusées</span>
-      </div>
-    </section>
+    </div>
 
     <!-- KANBAN BOARD -->
     <section class="kanban-board">

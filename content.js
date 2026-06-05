@@ -268,7 +268,7 @@ function injectFloatingWidget(details) {
       bottom: 24px;
       right: 24px;
       z-index: 99999999;
-      color: #0B192C;
+      color: #1A1A1A;
     }
 
     /* Bouton flottant réduit */
@@ -277,21 +277,22 @@ function injectFloatingWidget(details) {
       align-items: center;
       gap: 8px;
       background-color: #FFFFFF;
-      border: 2px solid #0B192C;
-      color: #0B192C;
+      border: 1px solid rgba(10, 8, 7, 0.12);
+      color: #1F1F1F;
       padding: 10px 18px;
       border-radius: 30px;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(11, 25, 44, 0.15);
+      box-shadow: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
       font-size: 13px;
       font-weight: 600;
-      transition: all 0.2s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
     }
 
     .widget-trigger:hover {
       transform: translateY(-2px);
-      background-color: #F8FAFC;
+      border-color: #1F1F1F;
+      box-shadow: 0 6px 16px -2px rgba(10, 8, 7, 0.06);
     }
 
     .widget-trigger.hidden {
@@ -308,12 +309,14 @@ function injectFloatingWidget(details) {
       display: none;
       flex-direction: column;
       width: 320px;
-      background-color: #FFFFFF;
-      border: 2px solid #0B192C;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(11, 25, 44, 0.2);
+      background-color: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(10, 8, 7, 0.1);
+      border-radius: 24px;
+      box-shadow: 0 8px 24px rgba(10, 8, 7, 0.05);
       padding: 16px;
-      animation: slideIn 0.3s ease forwards;
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     .widget-panel.open {
@@ -331,7 +334,7 @@ function injectFloatingWidget(details) {
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
-      border-bottom: 1px solid #E2E8F0;
+      border-bottom: 1px solid rgba(10, 8, 7, 0.08);
       padding-bottom: 8px;
     }
 
@@ -339,6 +342,7 @@ function injectFloatingWidget(details) {
       margin: 0;
       font-size: 14px;
       font-weight: 700;
+      color: #1F1F1F;
       letter-spacing: -0.01em;
     }
 
@@ -346,17 +350,20 @@ function injectFloatingWidget(details) {
       background: none;
       border: none;
       cursor: pointer;
-      color: #475569;
-      padding: 2px;
+      color: #7B7A75;
+      padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 50%;
+      transition: all 0.15s ease;
+      width: 24px;
+      height: 24px;
     }
 
     .btn-close:hover {
-      background-color: #F8FAFC;
-      color: #0B192C;
+      background-color: rgba(10, 8, 7, 0.05);
+      color: #1F1F1F;
     }
 
     /* Champs du formulaire */
@@ -378,22 +385,25 @@ function injectFloatingWidget(details) {
 
     label {
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
+      color: #1F1F1F;
     }
 
     input, select {
       font-family: 'Outfit', sans-serif;
       font-size: 12px;
-      padding: 6px 8px;
-      border: 1px solid #E2E8F0;
-      border-radius: 6px;
-      color: #0B192C;
+      padding: 6px 12px;
+      border: 1px solid rgba(10, 8, 7, 0.1);
+      border-radius: 30px;
+      color: #1A1A1A;
       background-color: #FFFFFF;
       outline: none;
+      transition: all 0.15s ease;
     }
 
     input:focus, select:focus {
-      border-color: #0B192C;
+      border-color: #1F1F1F;
+      box-shadow: 0 0 0 3px rgba(31, 31, 31, 0.08);
     }
 
     /* Boutons */
@@ -407,32 +417,34 @@ function injectFloatingWidget(details) {
     .btn {
       font-family: 'Outfit', sans-serif;
       font-size: 12px;
-      font-weight: 500;
-      padding: 7px;
-      border-radius: 6px;
+      font-weight: 600;
+      padding: 8px;
+      border-radius: 30px;
       cursor: pointer;
       text-align: center;
       border: 1px solid transparent;
-      transition: all 0.15s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .btn-solid {
-      background-color: #0B192C;
+      background-color: #1F1F1F;
       color: #FFFFFF;
     }
 
     .btn-solid:hover {
-      background-color: #1E3E62;
+      background-color: #000000;
+      transform: translateY(-1px);
     }
 
     .btn-outline {
       background-color: #FFFFFF;
-      color: #0B192C;
-      border: 1px solid #0B192C;
+      color: #1F1F1F;
+      border: 1px solid rgba(10, 8, 7, 0.12);
     }
 
     .btn-outline:hover {
-      background-color: #F8FAFC;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-color: #1F1F1F;
     }
 
     /* Message succès */
@@ -450,13 +462,14 @@ function injectFloatingWidget(details) {
     }
 
     .icon-success {
-      color: #0B192C;
+      color: #FFD25E;
     }
 
     .success-panel p {
       margin: 0;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      color: #1F1F1F;
     }
   `;
 
@@ -606,7 +619,7 @@ function injectAlreadyTrackedWidget(details) {
       bottom: 24px;
       right: 24px;
       z-index: 99999999;
-      color: #0B192C;
+      color: #1F1F1F;
     }
 
     .widget-trigger-saved {
@@ -614,27 +627,28 @@ function injectAlreadyTrackedWidget(details) {
       align-items: center;
       gap: 8px;
       background-color: #FFFFFF;
-      border: 2px solid #0B192C;
-      color: #0B192C;
+      border: 1px solid rgba(10, 8, 7, 0.12);
+      color: #FFD25E;
       padding: 10px 18px;
       border-radius: 30px;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(11, 25, 44, 0.15);
+      box-shadow: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
       font-size: 13px;
       font-weight: 600;
-      transition: all 0.2s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
     }
 
     .widget-trigger-saved:hover {
       transform: translateY(-2px);
-      background-color: #F8FAFC;
+      border-color: #1F1F1F;
+      box-shadow: 0 6px 16px -2px rgba(10, 8, 7, 0.06);
     }
 
     .icon-check {
       width: 16px;
       height: 16px;
-      color: #0B192C;
+      color: #FFD25E;
     }
   `;
 

@@ -97,22 +97,20 @@ function detectActiveJobDetails() {
         if (isDuplicate) {
           // Afficher une alerte de doublon
           scrapingAlert.innerHTML = `
-            <svg class="alert-icon" viewBox="0 0 24 24" width="16" height="16" style="color: #0B192C;">
+            <svg class="alert-icon" viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
             </svg>
-            <span style="color: #0B192C;">Cette offre est déjà dans votre suivi !</span>
+            <span>Cette offre est déjà dans votre suivi !</span>
           `;
-          scrapingAlert.style.borderColor = "#0B192C";
-          scrapingAlert.style.backgroundColor = "#F1F5F9";
+          scrapingAlert.classList.add('duplicate');
           scrapingAlert.classList.remove('hidden');
           
           // Désactiver le bouton d'enregistrement
           btnSave.textContent = "Déjà suivie";
           btnSave.disabled = true;
-          btnSave.style.opacity = "0.5";
-          btnSave.style.cursor = "not-allowed";
         } else if (response && response.success) {
           // Message standard d'offre détectée
+          scrapingAlert.classList.remove('duplicate');
           scrapingAlert.classList.remove('hidden');
         }
       });
