@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Suivi de Candidatures - Job Tracker",
+  "name": "Suivi de Candidatures - Job Tracker BÊTA",
   "version": "1.0.0",
-  "description": "Suivez vos candidatures d'emploi simplement, visualisez-les sur un tableau Kanban, et exportez-les vers Excel.",
+  "description": "Suivez vos candidatures simplement (Kanban, Excel). CETTE EXTENSION EST POUR LES TESTS BÊTA",
   "permissions": [
     "storage",
     "activeTab",
