@@ -245,3 +245,6 @@ body { min-height: 100vh; overflow-x: hidden; }
 @media (max-width: 640px) {
   .panel { left: 0; width: auto; border-left: 0; }
 }
+
+/* Un salaire long ne doit pas élargir la carte */
+.kanban-card__footer .tag { min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }

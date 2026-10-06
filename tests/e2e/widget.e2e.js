@@ -74,3 +74,50 @@ test('offre suivie : statut affiché et ouverture du dashboard sur la candidatur
   const url = await waitForTab(browser, (u) => u.includes('dashboard.html'));
   assert.ok(url.endsWith('dashboard.html#x1'), url);
 });
+
+// --- Relecture finale ---
+test('le widget suit les changements du stockage (ajout, statut, suppression)', async () => {
+  await seed(browser, []);
+  await page.reload({ waitUntil: 'load' });
+  assert.match((await widgetState(page)).text, /Suivre cette offre/);
+
+  await seed(browser, [{ id: 'x2', url: jobUrl, title: 'Dev', company: 'Acme', status: 'applied', dateApplied: '2026-10-01' }]);
+  await sleep(800);
+  let s = await widgetState(page);
+  assert.match(s.text, /Offre déjà suivie/);
+  assert.match(s.tag || '', /tag--applied/);
+
+  await seed(browser, [{ id: 'x2', url: jobUrl, title: 'Dev', company: 'Acme', status: 'offer', dateApplied: '2026-10-01' }]);
+  await sleep(800);
+  assert.match((await widgetState(page)).tag || '', /tag--offer/);
+
+  await seed(browser, []);
+  await sleep(800);
+  assert.match((await widgetState(page)).text, /Suivre cette offre/);
+});
+
+test('plus aucun alert() dans le script de contenu', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', 'content.js'), 'utf8');
+  assert.ok(!/\balert\(/.test(src));
+});
+
+test('ajout depuis le widget : message de succès puis statut de l\'offre', async () => {
+  await seed(browser, []);
+  await page.reload({ waitUntil: 'load' });
+  await widgetState(page);
+  await page.evaluate(() => {
+    const root = document.getElementById('job-tracker-floating-root').shadowRoot;
+    root.querySelector('.wt-pill').click();
+    root.querySelector('.wt-form button[type="submit"]').click();
+  });
+  await sleep(300);
+  const success = await page.evaluate(() => {
+    const el = document.getElementById('job-tracker-floating-root').shadowRoot.querySelector('.wt-success');
+    return el && !el.classList.contains('hidden');
+  });
+  assert.ok(success, 'message de succès absent');
+  await sleep(2500);
+  const s = await widgetState(page);
+  assert.match(s.text, /Offre déjà suivie/);
+  assert.match(s.tag || '', /tag--applied/);
+});

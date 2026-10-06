@@ -299,3 +299,20 @@ describe('Popup — vue Détail', () => {
     await page.close();
   });
 });
+
+// --- Relecture finale ---
+describe('Popup — corrections de la relecture', () => {
+  test('des chaînes longues sans espace ne font pas déborder le détail', async () => {
+    const longWord = 'https://exemple.fr/offres/' + 'a'.repeat(200);
+    await seed(browser, [{ ...base, id: 'w', title: 'Intitulé' + 'x'.repeat(120), company: 'Société' + 'y'.repeat(120), status: 'applied', dateApplied: '2026-10-01', notes: longWord }]);
+    const page = await openPopup();
+    await clickGroup(page, 'progress');
+    await page.click('.job-item[data-id="w"]');
+    const r = await page.evaluate(() => {
+      const m = document.querySelector('.popup-main');
+      return { main: m.scrollWidth <= m.clientWidth, doc: document.documentElement.scrollWidth <= 360 };
+    });
+    assert.ok(r.main && r.doc, JSON.stringify(r));
+    await page.close();
+  });
+});

@@ -5,7 +5,8 @@ const state = {
   list: [],
   query: '',
   panelId: null, // id de la candidature ouverte, 'new' en création
-  returnFocus: null // sélecteur de l'élément à refocaliser à la fermeture
+  returnFocus: null, // sélecteur de l'élément à refocaliser à la fermeture
+  panelSnapshot: null // valeurs du panneau à l'ouverture
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -212,7 +213,10 @@ function setupPanel() {
   $('.panel-backdrop').addEventListener('click', closePanel);
   $('#panel-delete').addEventListener('click', () => deleteCandidature(state.panelId));
 
-  $('.panel').addEventListener('keydown', (e) => {
+  // Écouté sur le document : un clic dans une zone non focalisable du panneau
+  // renvoie le focus sur <body>, hors du panneau.
+  document.addEventListener('keydown', (e) => {
+    if ($('.panel').classList.contains('hidden')) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       closePanel();
@@ -229,7 +233,10 @@ function trapFocus(e) {
     .filter((el) => !el.disabled && el.offsetParent !== null && !(el.type === 'radio' && !el.checked));
   const first = focusables[0];
   const last = focusables[focusables.length - 1];
-  if (e.shiftKey && document.activeElement === first) {
+  if (!$('.panel').contains(document.activeElement)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  } else if (e.shiftKey && document.activeElement === first) {
     e.preventDefault();
     last.focus();
   } else if (!e.shiftKey && document.activeElement === last) {
@@ -267,6 +274,9 @@ function openPanel({ id, status, returnFocus } = {}) {
   }
   const statusId = UI.statusOf(c).id;
   document.querySelectorAll('.panel input[name="status"]').forEach((r) => { r.checked = r.value === statusId; });
+  // Valeurs à l'ouverture : à l'enregistrement, seuls les champs modifiés sont écrits,
+  // pour ne pas écraser ce qui a changé ailleurs pendant l'édition.
+  state.panelSnapshot = readPanelFields();
 
   const { panel, backdrop } = panelEls();
   panel.classList.remove('hidden');
@@ -319,11 +329,14 @@ function savePanel() {
 
   const editId = state.panelId !== 'new' ? state.panelId : null;
   const candidature = editId ? null : JobTracker.createCandidature(fields);
+  const changes = Object.fromEntries(Object.entries(fields).filter(([k, v]) => v !== state.panelSnapshot[k]));
 
   JobTracker.update((list) => {
-    if (JobTracker.isDuplicate(list, fields, editId)) return null;
-    if (editId) return list.map((c) => (c.id === editId ? { ...c, ...fields } : c));
-    return [candidature, ...list];
+    if (!editId) return JobTracker.isDuplicate(list, fields) ? null : [candidature, ...list];
+    const current = list.find((c) => c.id === editId);
+    const merged = { ...current, ...changes };
+    if (!current || JobTracker.isDuplicate(list, merged, editId)) return null;
+    return list.map((c) => (c.id === editId ? merged : c));
   }, (saved, list) => {
     if (!saved) {
       UI.toast('Une candidature identique existe déjà.');

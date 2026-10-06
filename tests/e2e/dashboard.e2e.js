@@ -369,3 +369,44 @@ describe('Dashboard — suppression et cas concurrents', () => {
     await dash.close();
   });
 });
+
+// --- Relecture finale ---
+describe('Dashboard — corrections de la relecture', () => {
+  test('le panneau ne réécrase pas un statut modifié ailleurs', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s1"]');
+    await seed(browser, DATA.map((c) => (c.id === 's1' ? { ...c, status: 'interview' } : c)));
+    await sleep(400);
+    await page.type('#f-notes', ' Ajout.');
+    await page.click('#panel-save');
+    await sleep(400);
+    const s1 = (await readStore(browser)).find((c) => c.id === 's1');
+    assert.equal(s1.status, 'interview', 'statut modifié ailleurs écrasé');
+    assert.match(s1.notes, /Ajout\.$/);
+    await page.close();
+  });
+
+  test('après un clic dans une zone non focalisable du panneau, Échap ferme toujours', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s2"]');
+    await page.click('.panel .section-title');
+    await page.keyboard.press('Tab');
+    assert.ok(await page.evaluate(() => document.querySelector('.panel').contains(document.activeElement)), 'focus sorti du panneau');
+    await page.click('.panel .section-title');
+    await page.keyboard.press('Escape');
+    assert.equal((await panelState(page)).open, false);
+    await page.close();
+  });
+
+  test('un salaire très long ne fait pas déborder la carte', async () => {
+    await seed(browser, [{ ...base, id: 'sal', title: 'Dev', company: 'Acme', status: 'applied', dateApplied: '2026-10-01', location: 'Paris', salary: '45–50k€ + variable + intéressement + mutuelle + tickets restaurant' }]);
+    const page = await openDashboard();
+    await sleep(300);
+    const r = await page.$eval('.kanban-card[data-id="sal"]', (card) => ({ card: card.scrollWidth <= card.clientWidth, col: card.closest('.kanban-col').scrollWidth <= card.closest('.kanban-col').clientWidth }));
+    assert.ok(r.card && r.col, JSON.stringify(r));
+    await page.close();
+  });
+});

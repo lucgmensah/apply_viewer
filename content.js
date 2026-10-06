@@ -10,6 +10,7 @@
   const FONT_FAMILY = 'JobTrackerJakarta';
   const RENDER_DELAY_MS = 2000; // Laisser le temps aux pages React de rendre l'offre
   const URL_POLL_MS = 1000;
+  const SUCCESS_MS = 2000; // durée d'affichage du message de succès
 
   // Écouter les messages venant de la pop-up
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -29,6 +30,9 @@
   // LinkedIn et Indeed changent d'offre sans recharger la page : on surveille l'URL
   // et on reconstruit le widget quand l'offre affichée change.
   let currentKey = null;
+  let currentDetails = null;
+  let widgetMode = null; // 'add' ou 'tracked:<id>:<statut>' : état affiché
+  let successUntil = 0; // le message de succès reste affiché jusqu'à cette date
   let lastHref = window.location.href;
   let refreshTimer = null;
 
@@ -44,23 +48,37 @@
       if (key === currentKey) return;
 
       currentKey = key;
+      currentDetails = key ? details : null;
+      widgetMode = null;
       removeWidget();
       if (!key) return;
 
       JobTracker.getAll((list) => {
         // L'utilisateur a pu changer d'offre pendant la lecture du stockage
-        if (currentKey !== key) return;
-        const tracked = JobTracker.findDuplicate(list, details);
-        if (tracked) {
-          injectAlreadyTrackedWidget(tracked);
-        } else {
-          injectFloatingWidget(details);
-        }
+        if (currentKey === key) syncWidget(list);
       });
     } catch (e) {
       console.error("Erreur lors de l'initialisation du widget de suivi :", e);
     }
   }
+
+  // Affiche l'état correspondant à la liste (offre suivie ou non, statut actuel).
+  // Ne reconstruit le widget que si cet état change : un formulaire en cours de saisie est conservé.
+  function syncWidget(list) {
+    if (!currentKey || !currentDetails || Date.now() < successUntil) return;
+    const tracked = JobTracker.findDuplicate(list, currentDetails);
+    const mode = tracked ? `tracked:${tracked.id}:${tracked.status}` : 'add';
+    if (mode === widgetMode) return;
+    widgetMode = mode;
+    if (tracked) {
+      injectAlreadyTrackedWidget(tracked);
+    } else {
+      injectFloatingWidget(currentDetails);
+    }
+  }
+
+  // Ajout, changement de statut ou suppression depuis la popup ou le dashboard
+  JobTracker.onChange(syncWidget);
 
   if (document.readyState === 'complete') {
     scheduleRefresh();
@@ -360,20 +378,28 @@
         notes: 'Ajouté automatiquement depuis l\'offre en ligne via le widget.'
       });
 
+      // Réserver l'affichage du succès avant d'écrire : onChange peut arriver
+      // avant le retour de l'écriture et remplacerait le widget trop tôt.
+      successUntil = Date.now() + SUCCESS_MS;
+      const showCurrentState = () => {
+        successUntil = 0;
+        JobTracker.getAll(syncWidget);
+      };
+
       JobTracker.update((list) => {
         // Vérification de dernière seconde (ajout possible depuis un autre onglet)
         if (JobTracker.isDuplicate(list, newJob)) return null;
         return [newJob, ...list];
       }, (saved) => {
         if (!saved) {
-          alert("Cette candidature est déjà enregistrée !");
+          // Déjà suivie (ajoutée ailleurs entre-temps) : afficher son statut
+          showCurrentState();
           return;
         }
         panel.classList.add('hidden');
         success.classList.remove('hidden');
-
-        // L'offre est désormais suivie : afficher son statut
-        setTimeout(() => injectAlreadyTrackedWidget(newJob), 2000);
+        // Puis l'état de l'offre affichée (« déjà suivie » + statut)
+        setTimeout(showCurrentState, SUCCESS_MS);
       });
     });
   }
