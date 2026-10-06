@@ -63,3 +63,35 @@ body {
 .form-field .input, .form-field .select { color: var(--color-text); font-weight: 500; }
 .form-error { margin: 0; color: var(--status-rejected-fg); font-size: 13px; font-weight: 600; }
 .form-error:empty { display: none; }
+
+/* --- DÉTAIL --- */
+.detail-card { padding-top: var(--space-3); }
+.detail-company { margin: 0; font-size: 12px; color: var(--color-text-muted); }
+.detail-title { margin: 2px 0 var(--space-3); font-size: 18px; font-weight: 700; line-height: 1.3; }
+.detail-rows { border-top: 1px solid var(--color-border); padding-top: var(--space-2); }
+.detail-notes { margin: 0; white-space: pre-wrap; font-size: 13px; color: var(--color-text); }
+
+.status-picker { position: relative; }
+.status-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  box-shadow: 0 8px 24px rgba(27, 27, 58, 0.12);
+}
+.status-menu.hidden { display: none; }
+.status-menu [role="menuitem"] {
+  display: flex;
+  padding: 6px var(--space-2);
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.status-menu [role="menuitem"]:hover, .status-menu [role="menuitem"]:focus-visible { background: var(--color-bg); }

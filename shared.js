@@ -166,6 +166,12 @@ var JobTracker = window.JobTracker || (() => {
     };
   }
 
+  // Copie avec le nouveau statut ; passer à « envoyée » sans date renseigne la date du jour
+  function applyStatus(candidature, status) {
+    const needsDate = status === 'applied' && !candidature.dateApplied;
+    return { ...candidature, status, dateApplied: needsDate ? todayISO() : candidature.dateApplied };
+  }
+
   // --- UTILS ---
   function escapeHTML(str) {
     if (!str) return '';
@@ -190,6 +196,7 @@ var JobTracker = window.JobTracker || (() => {
     generateId,
     todayISO,
     createCandidature,
+    applyStatus,
     escapeHTML
   };
 })();

@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   JobTracker.onChange((list) => {
     state.list = list;
+    // La candidature affichée a été supprimée ailleurs (dashboard, autre fenêtre)
+    if (state.view === 'detail' && !list.some((c) => c.id === state.selectedId)) {
+      go('list');
+      UI.toast('Cette candidature a été supprimée');
+      return;
+    }
     render();
   });
 });
@@ -225,8 +231,104 @@ function renderList() {
     .join('');
 }
 
-// --- VUE DÉTAIL (tâche 7) ---
-function renderDetail() {}
+// --- VUE DÉTAIL ---
+function formatDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+function renderDetail() {
+  const view = $('#view-detail');
+  const c = state.list.find((x) => x.id === state.selectedId);
+  if (!c) return;
+
+  const status = UI.statusOf(c);
+  const row = (field, label, valueHTML) => valueHTML
+    ? `<div class="field-row" data-field="${field}"><span class="field-row__label">${label}</span><span class="field-row__value">${valueHTML}</span></div>`
+    : '';
+
+  const contact = [
+    c.contactName ? esc(c.contactName) : '',
+    c.contactEmail ? `<a href="mailto:${esc(c.contactEmail)}">${esc(c.contactEmail)}</a>` : '',
+    c.contactPhone ? esc(c.contactPhone) : ''
+  ].filter(Boolean).join('<br>');
+
+  const menu = UI.STATUSES
+    .map((s) => `<button type="button" role="menuitem" data-status="${s.id}" tabindex="-1">${UI.statusTag(s.id)}</button>`)
+    .join('');
+
+  view.innerHTML = `
+    <div class="panel-header">
+      <button type="button" class="icon-btn" id="detail-back" aria-label="Retour à la liste">${ICON_BACK}</button>
+      <h2>Détail</h2>
+    </div>
+    <article class="card detail-card">
+      <p class="detail-company">${esc(c.company)}</p>
+      <h3 class="detail-title">${esc(c.title)}</h3>
+      <div class="detail-rows">
+        <div class="field-row" data-field="status">
+          <span class="field-row__label">Statut</span>
+          <span class="field-row__value status-picker">
+            <button type="button" id="status-trigger" class="tag tag--${status.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Statut : ${esc(status.short)}. Modifier">${esc(status.short)}</button>
+            <div id="status-menu" class="status-menu hidden" role="menu" aria-label="Choisir un statut">${menu}</div>
+          </span>
+        </div>
+        ${row('date', 'Date', esc(formatDate(c.dateApplied)))}
+        ${row('location', 'Lieu', esc(c.location))}
+        ${row('salary', 'Salaire', esc(c.salary))}
+        ${row('contact', 'Contact', contact)}
+        ${row('url', 'Offre', c.url ? `<a id="detail-url" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">Ouvrir l'offre ↗</a>` : '')}
+      </div>
+    </article>
+    ${c.notes ? `<section><h3 class="section-title">Notes</h3><p class="card detail-notes">${esc(c.notes)}</p></section>` : ''}
+    <button type="button" id="detail-edit" class="btn btn--secondary">Modifier dans le dashboard</button>`;
+
+  $('#detail-back').addEventListener('click', () => go('list'));
+  $('#detail-edit').addEventListener('click', () => openDashboard(c.id));
+  bindStatusMenu(c.id);
+}
+
+function bindStatusMenu(id) {
+  const trigger = $('#status-trigger');
+  const menu = $('#status-menu');
+  const items = () => [...menu.querySelectorAll('[role="menuitem"]')];
+
+  const close = () => {
+    menu.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onOutside, true);
+  };
+  const onOutside = (e) => {
+    if (!menu.contains(e.target) && e.target !== trigger) close();
+  };
+  const open = () => {
+    menu.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+    document.addEventListener('click', onOutside, true);
+    items()[0].focus();
+  };
+
+  trigger.addEventListener('click', () => (menu.classList.contains('hidden') ? open() : close()));
+
+  menu.addEventListener('keydown', (e) => {
+    const list = items();
+    const i = list.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    if (e.key === 'Escape') { e.preventDefault(); close(); trigger.focus(); }
+  });
+
+  menu.addEventListener('click', (e) => {
+    const item = e.target.closest('[role="menuitem"]');
+    if (!item) return;
+    close();
+    const status = item.dataset.status;
+    JobTracker.update((list) => list.map((c) => (c.id === id ? JobTracker.applyStatus(c, status) : c)), (saved, list) => {
+      state.list = list;
+      render();
+    });
+  });
+}
 
 // --- VUE AJOUT ---
 function openAdd(prefill) {

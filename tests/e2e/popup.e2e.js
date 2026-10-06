@@ -194,3 +194,108 @@ describe('Popup — bandeau et ajout', () => {
     await page.close();
   });
 });
+
+// --- Tâche 7 : vue Détail ---
+async function openDetail(group, id) {
+  const page = await openPopup();
+  await clickGroup(page, group);
+  await page.click(`.job-item[data-id="${id}"]`);
+  return page;
+}
+
+const todayLocal = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+describe('Popup — vue Détail', () => {
+  before(async () => seed(browser, SAMPLE));
+
+  test('affiche les lignes renseignées, liens et notes', async () => {
+    const page = await openDetail('progress', 's1');
+    const r = await page.evaluate(() => {
+      const v = document.getElementById('view-detail');
+      return {
+        visible: !v.classList.contains('hidden'),
+        company: v.querySelector('.detail-company')?.textContent.trim(),
+        title: v.querySelector('.detail-title')?.textContent.trim(),
+        rows: [...v.querySelectorAll('.field-row')].map((r) => r.dataset.field),
+        mailto: v.querySelector('a[href^="mailto:"]')?.getAttribute('href'),
+        urlTarget: document.getElementById('detail-url')?.getAttribute('target'),
+        urlHref: document.getElementById('detail-url')?.getAttribute('href'),
+        notes: v.querySelector('.detail-notes')?.textContent,
+        notesWs: v.querySelector('.detail-notes') && getComputedStyle(v.querySelector('.detail-notes')).whiteSpace
+      };
+    });
+    assert.ok(r.visible);
+    assert.equal(r.company, 'Acme');
+    assert.equal(r.title, 'Développeur Front-End');
+    assert.deepEqual(r.rows, ['status', 'date', 'location', 'salary', 'contact', 'url']);
+    assert.equal(r.mailto, 'mailto:sophie@acme.fr');
+    assert.equal(r.urlTarget, '_blank');
+    assert.equal(r.urlHref, 'https://www.linkedin.com/jobs/view/111');
+    assert.match(r.notes, /Relancer lundi\.\nPréparer/);
+    assert.equal(r.notesWs, 'pre-wrap');
+    await shot(page, 'popup-detail');
+    await page.close();
+  });
+
+  test('les lignes vides ne sont pas affichées', async () => {
+    const page = await openDetail('progress', 's3');
+    const rows = await page.$$eval('#view-detail .field-row', (els) => els.map((r) => r.dataset.field));
+    assert.deepEqual(rows, ['status', 'date', 'location']);
+    await page.close();
+  });
+
+  test('changer le statut depuis le menu', async () => {
+    const page = await openDetail('progress', 's1');
+    await page.click('#status-trigger');
+    await page.click('#status-menu [data-status="interview"]');
+    await sleep(300);
+    const s1 = (await readStore(browser)).find((c) => c.id === 's1');
+    assert.equal(s1.status, 'interview');
+    assert.ok(await page.$('#status-trigger.tag--interview'), 'tag non mis à jour');
+    assert.equal(await page.$('#status-menu:not(.hidden)'), null, 'menu resté ouvert');
+    await page.close();
+  });
+
+  test('passer à « envoyée » sans date ajoute la date du jour', async () => {
+    const page = await openDetail('todo', 's5');
+    await page.click('#status-trigger');
+    await page.click('#status-menu [data-status="applied"]');
+    await sleep(300);
+    const s5 = (await readStore(browser)).find((c) => c.id === 's5');
+    assert.equal(s5.status, 'applied');
+    assert.equal(s5.dateApplied, todayLocal());
+    await page.close();
+  });
+
+  test('« Modifier dans le dashboard » ouvre dashboard.html#<id>', async () => {
+    const page = await openDetail('progress', 's2');
+    await page.click('#detail-edit');
+    const url = await waitForTab(browser, (u) => u.endsWith('dashboard.html#s2'));
+    assert.ok(url);
+    await page.close();
+  });
+
+  test('retour à la liste sur le même onglet', async () => {
+    const page = await openDetail('done', 's6');
+    await page.click('#detail-back');
+    assert.equal(await visibleView(page), 'list');
+    assert.equal((await listState(page)).active, 'done');
+    await clickGroup(page, 'progress');
+    await page.close();
+  });
+
+  test('candidature supprimée ailleurs : retour à la liste avec un message', async () => {
+    await seed(browser, SAMPLE);
+    const page = await openDetail('progress', 's1');
+    await seed(browser, SAMPLE.filter((c) => c.id !== 's1'));
+    await sleep(500);
+    assert.equal(await visibleView(page), 'list');
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Cette candidature a été supprimée/);
+    assert.deepEqual(page.errors, []);
+    await page.close();
+  });
+});

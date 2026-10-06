@@ -77,3 +77,13 @@ test('todayISO, generateId, escapeHTML', () => {
   assert.match(J.generateId(), /^[0-9a-f-]{36}$/);
   assert.equal(J.escapeHTML('<a "x">'), '&lt;a &quot;x&quot;&gt;');
 });
+
+test('applyStatus : date du jour ajoutée seulement en passant à « envoyée » sans date', () => {
+  const c = { id: 'a', status: 'wishlist', dateApplied: '' };
+  const applied = J.applyStatus(c, 'applied');
+  assert.equal(applied.status, 'applied');
+  assert.equal(applied.dateApplied, J.todayISO());
+  assert.equal(c.status, 'wishlist', 'objet d\'origine modifié');
+  assert.equal(J.applyStatus({ status: 'wishlist', dateApplied: '2026-01-01' }, 'applied').dateApplied, '2026-01-01');
+  assert.equal(J.applyStatus({ status: 'applied', dateApplied: '' }, 'interview').dateApplied, '');
+});
