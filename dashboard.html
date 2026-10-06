@@ -33,6 +33,44 @@
     <section class="kanban" aria-label="Tableau des candidatures"></section>
   </main>
 
+  <!-- PANNEAU DE DÉTAIL -->
+  <div class="panel-backdrop hidden"></div>
+  <aside class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="panel-heading">
+    <header class="panel__header">
+      <h2 id="panel-heading">Nouvelle candidature</h2>
+      <button type="button" id="panel-close" class="icon-btn" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+
+    <form id="panel-form" class="panel__body" novalidate>
+      <h3 class="section-title">Statut</h3>
+      <div class="status-group" role="radiogroup" aria-label="Statut"></div>
+
+      <h3 class="section-title">Offre</h3>
+      <div class="field-row"><label class="field-row__label" for="f-title">Poste *</label><input class="input input--bare" id="f-title" required placeholder="ex : Développeur Front-End"></div>
+      <div class="field-row"><label class="field-row__label" for="f-company">Entreprise *</label><input class="input input--bare" id="f-company" required placeholder="ex : Acme"></div>
+      <div class="field-row"><label class="field-row__label" for="f-date">Date</label><input class="input input--bare" id="f-date" type="date"></div>
+      <div class="field-row"><label class="field-row__label" for="f-location">Lieu</label><input class="input input--bare" id="f-location" placeholder="Paris, télétravail…"></div>
+      <div class="field-row"><label class="field-row__label" for="f-salary">Salaire</label><input class="input input--bare" id="f-salary" placeholder="ex : 45k€"></div>
+      <div class="field-row"><label class="field-row__label" for="f-url">Lien de l'offre</label><input class="input input--bare" id="f-url" type="url" placeholder="https://…"></div>
+
+      <h3 class="section-title">Contact</h3>
+      <div class="field-row"><label class="field-row__label" for="f-contact-name">Nom</label><input class="input input--bare" id="f-contact-name" placeholder="ex : Sophie Martin"></div>
+      <div class="field-row"><label class="field-row__label" for="f-contact-email">E-mail</label><input class="input input--bare" id="f-contact-email" type="email" placeholder="contact@entreprise.com"></div>
+      <div class="field-row"><label class="field-row__label" for="f-contact-phone">Téléphone</label><input class="input input--bare" id="f-contact-phone" type="tel" placeholder="06 12 34 56 78"></div>
+
+      <h3 class="section-title"><label for="f-notes">Notes</label></h3>
+      <textarea class="textarea" id="f-notes" rows="5" placeholder="Questions préparées, dates de relance…"></textarea>
+    </form>
+
+    <footer class="panel__footer">
+      <button type="button" id="panel-delete" class="btn btn--danger">Supprimer</button>
+      <button type="button" id="panel-cancel" class="btn btn--ghost">Annuler</button>
+      <button type="submit" id="panel-save" form="panel-form" class="btn btn--primary">Enregistrer</button>
+    </footer>
+  </aside>
+
   <script src="shared.js"></script>
   <script src="ui.js"></script>
   <script src="dashboard.js"></script>

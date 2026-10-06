@@ -145,3 +145,151 @@ describe('Dashboard — statistiques et Kanban', () => {
 });
 
 module.exports = { DATA, openDashboard, board, dragTo, todayLocal };
+
+// --- Tâche 9 : panneau de détail ---
+const panelState = (page) => page.evaluate(() => {
+  const panel = document.querySelector('.panel');
+  const open = !!panel && !panel.classList.contains('hidden');
+  return {
+    open,
+    modal: open && panel.getAttribute('aria-modal') === 'true',
+    heading: open ? panel.querySelector('#panel-heading').textContent.trim() : null,
+    title: open ? document.getElementById('f-title').value : null,
+    status: open ? document.querySelector('.panel input[name="status"]:checked')?.value : null,
+    hash: location.hash
+  };
+});
+
+describe('Dashboard — panneau de détail', () => {
+  before(async () => seed(browser, DATA));
+
+  test('clic sur une carte : panneau pré-rempli et hash', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s1"]');
+    const p = await panelState(page);
+    assert.ok(p.open && p.modal);
+    assert.equal(p.heading, 'Modifier la candidature');
+    assert.equal(p.title, 'Développeur Front-End');
+    assert.equal(p.status, 'applied');
+    assert.equal(p.hash, '#s1');
+    await shot(page, 'dashboard-panel-edit');
+    await page.close();
+  });
+
+  test('enregistrer : stockage mis à jour, toast, fermeture', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s1"]');
+    await page.$eval('#f-salary', (el) => { el.value = ''; });
+    await page.type('#f-salary', '52k€');
+    await page.click('#panel-save');
+    await sleep(300);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').salary, '52k€');
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Candidature enregistrée/);
+    const p = await panelState(page);
+    assert.equal(p.open, false);
+    assert.equal(p.hash, '');
+    await page.close();
+  });
+
+  test('Échap ferme et rend le focus à la carte', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.focus('.kanban-card[data-id="s2"]');
+    await page.keyboard.press('Enter');
+    assert.ok((await panelState(page)).open);
+    await page.keyboard.press('Escape');
+    assert.equal((await panelState(page)).open, false);
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.id), 's2');
+    await page.close();
+  });
+
+  test('le focus reste dans le panneau', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s2"]');
+    await page.focus('#panel-save');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'panel-close');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'panel-save');
+    await page.close();
+  });
+
+  test('« + » d\'une colonne et « Nouvelle candidature » ouvrent un panneau vide', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-col[data-status="interview"] .kanban-col__add');
+    let p = await panelState(page);
+    assert.deepEqual([p.heading, p.title, p.status], ['Nouvelle candidature', '', 'interview']);
+    await shot(page, 'dashboard-panel-new');
+    await page.keyboard.press('Escape');
+    await page.click('#btn-add');
+    p = await panelState(page);
+    assert.equal(p.status, 'wishlist');
+    await page.close();
+  });
+
+  test('doublon : message et panneau toujours ouvert', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('#btn-add');
+    await page.type('#f-title', 'UX Designer');
+    await page.type('#f-company', 'Qux');
+    await page.click('#panel-save');
+    await sleep(300);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Une candidature identique existe déjà\./);
+    assert.ok((await panelState(page)).open);
+    assert.equal((await readStore(browser)).length, DATA.length);
+    await page.close();
+  });
+
+  test('champs obligatoires vides : pas d\'enregistrement', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('#btn-add');
+    await page.click('#panel-save');
+    await sleep(300);
+    assert.ok((await panelState(page)).open);
+    assert.equal((await readStore(browser)).length, DATA.length);
+    await page.close();
+  });
+
+  test('ouverture par le hash, id inconnu signalé', async () => {
+    let page = await openDashboard('#s2');
+    await sleep(400);
+    let p = await panelState(page);
+    assert.ok(p.open);
+    assert.equal(p.title, 'Data Engineer');
+    await page.close();
+
+    page = await openDashboard('#inconnu');
+    await sleep(400);
+    assert.equal((await panelState(page)).open, false);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Candidature introuvable/);
+    await page.close();
+  });
+
+  test('clic sur le voile : fermeture', async () => {
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s2"]');
+    await page.mouse.click(100, 400);
+    assert.equal((await panelState(page)).open, false);
+    await page.close();
+  });
+
+  test('petit écran : panneau pleine largeur', async () => {
+    const page = await openDashboard('', { width: 600, height: 800 });
+    await sleep(300);
+    await page.click('#btn-add');
+    const w = await page.$eval('.panel', (p) => Math.round(p.getBoundingClientRect().width));
+    assert.equal(w, await page.evaluate(() => document.documentElement.clientWidth));
+    await page.close();
+  });
+});

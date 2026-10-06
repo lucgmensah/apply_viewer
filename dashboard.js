@@ -3,7 +3,9 @@
 
 const state = {
   list: [],
-  query: ''
+  query: '',
+  panelId: null, // id de la candidature ouverte, 'new' en création
+  returnFocus: null // sélecteur de l'élément à refocaliser à la fermeture
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -28,10 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-export').addEventListener('click', handleExportCSV);
 
   setupKanbanEvents();
+  setupPanel();
 
   JobTracker.getAll((list) => {
     state.list = list;
     render();
+    openFromHash();
   });
   JobTracker.onChange((list) => {
     state.list = list;
@@ -171,8 +175,164 @@ function setupKanbanEvents() {
   });
 }
 
-// --- PANNEAU DE DÉTAIL (tâche 9) ---
-function openPanel({ id, status, returnFocus } = {}) {}
+// --- PANNEAU DE DÉTAIL ---
+const FIELDS = {
+  title: 'f-title',
+  company: 'f-company',
+  dateApplied: 'f-date',
+  location: 'f-location',
+  salary: 'f-salary',
+  url: 'f-url',
+  contactName: 'f-contact-name',
+  contactEmail: 'f-contact-email',
+  contactPhone: 'f-contact-phone',
+  notes: 'f-notes'
+};
+
+const panelEls = () => ({ panel: $('.panel'), backdrop: $('.panel-backdrop') });
+
+function setupPanel() {
+  $('.status-group').innerHTML = UI.STATUSES.map((s) => `
+    <label class="status-option">
+      <input type="radio" name="status" value="${s.id}">
+      ${UI.statusTag(s.id)}
+    </label>`).join('');
+
+  $('#panel-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    savePanel();
+  });
+  $('#panel-close').addEventListener('click', closePanel);
+  $('#panel-cancel').addEventListener('click', closePanel);
+  $('.panel-backdrop').addEventListener('click', closePanel);
+  $('#panel-delete').addEventListener('click', () => deleteCandidature(state.panelId));
+
+  $('.panel').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closePanel();
+    }
+    if (e.key === 'Tab') trapFocus(e);
+  });
+
+  window.addEventListener('hashchange', openFromHash);
+}
+
+// Garde le focus dans le panneau tant qu'il est ouvert
+function trapFocus(e) {
+  const focusables = [...$('.panel').querySelectorAll('button, input, textarea, select, a[href]')]
+    .filter((el) => !el.disabled && el.offsetParent !== null && !(el.type === 'radio' && !el.checked));
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+// Sélecteur de l'élément qui a ouvert le panneau (les cartes sont recréées à chaque rendu)
+function focusSelector(el) {
+  if (!el) return null;
+  if (el.dataset && el.dataset.id) return `.kanban-card[data-id="${CSS.escape(el.dataset.id)}"]`;
+  const col = el.closest && el.closest('.kanban-col');
+  if (col) return `.kanban-col[data-status="${col.dataset.status}"] .kanban-col__add`;
+  return el.id ? `#${el.id}` : null;
+}
+
+function openPanel({ id, status, returnFocus } = {}) {
+  const existing = id ? state.list.find((c) => c.id === id) : null;
+  if (id && !existing) {
+    UI.toast('Candidature introuvable');
+    return;
+  }
+
+  const c = existing || { status: status || 'wishlist', dateApplied: JobTracker.todayISO() };
+  state.panelId = existing ? existing.id : 'new';
+  state.returnFocus = focusSelector(returnFocus || document.activeElement);
+
+  $('#panel-heading').textContent = existing ? 'Modifier la candidature' : 'Nouvelle candidature';
+  $('#panel-delete').classList.toggle('hidden', !existing);
+  for (const [key, elId] of Object.entries(FIELDS)) {
+    const input = document.getElementById(elId);
+    input.value = c[key] || '';
+    input.removeAttribute('aria-invalid');
+  }
+  const statusId = UI.statusOf(c).id;
+  document.querySelectorAll('.panel input[name="status"]').forEach((r) => { r.checked = r.value === statusId; });
+
+  const { panel, backdrop } = panelEls();
+  panel.classList.remove('hidden');
+  backdrop.classList.remove('hidden');
+  panel.querySelector('.panel__body').scrollTop = 0;
+  history.replaceState(null, '', existing ? '#' + encodeURIComponent(existing.id) : location.pathname);
+  $('#f-title').focus();
+}
+
+function closePanel() {
+  const { panel, backdrop } = panelEls();
+  if (panel.classList.contains('hidden')) return;
+  panel.classList.add('hidden');
+  backdrop.classList.add('hidden');
+  state.panelId = null;
+  history.replaceState(null, '', location.pathname);
+  const target = state.returnFocus && document.querySelector(state.returnFocus);
+  if (target) target.focus();
+}
+
+function openFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return;
+  if (state.list.some((c) => c.id === id)) {
+    openPanel({ id });
+  } else {
+    history.replaceState(null, '', location.pathname);
+    UI.toast('Candidature introuvable');
+  }
+}
+
+function readPanelFields() {
+  const data = {};
+  for (const [key, elId] of Object.entries(FIELDS)) data[key] = document.getElementById(elId).value.trim();
+  data.status = (document.querySelector('.panel input[name="status"]:checked') || {}).value || 'wishlist';
+  return data;
+}
+
+function savePanel() {
+  const fields = readPanelFields();
+  const missing = ['title', 'company'].filter((k) => !fields[k]);
+  for (const k of ['title', 'company']) {
+    document.getElementById(FIELDS[k]).setAttribute('aria-invalid', String(missing.includes(k)));
+  }
+  if (missing.length) {
+    document.getElementById(FIELDS[missing[0]]).focus();
+    UI.toast("Le poste et l'entreprise sont obligatoires.");
+    return;
+  }
+
+  const editId = state.panelId !== 'new' ? state.panelId : null;
+  const candidature = editId ? null : JobTracker.createCandidature(fields);
+
+  JobTracker.update((list) => {
+    if (JobTracker.isDuplicate(list, fields, editId)) return null;
+    if (editId) return list.map((c) => (c.id === editId ? { ...c, ...fields } : c));
+    return [candidature, ...list];
+  }, (saved, list) => {
+    if (!saved) {
+      UI.toast('Une candidature identique existe déjà.');
+      return;
+    }
+    state.list = list;
+    render();
+    closePanel();
+    UI.toast('Candidature enregistrée');
+  });
+}
+
+// Suppression (tâche 10)
+function deleteCandidature(id) {}
 
 // --- EXPORT CSV ---
 function handleExportCSV() {

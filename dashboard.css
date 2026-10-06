@@ -172,3 +172,76 @@ body { min-height: 100vh; overflow-x: hidden; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .search .input { width: 160px; }
 }
+
+/* --- PANNEAU DE DÉTAIL --- */
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(27, 27, 58, 0.18);
+  animation: fade-in var(--transition-normal);
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-width: 100%;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-panel);
+  animation: slide-in var(--transition-normal);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6) var(--space-3);
+}
+.panel__header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.panel__header .icon-btn { border-color: transparent; }
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space-6) var(--space-6);
+}
+.panel__body .section-title:first-child { margin-top: var(--space-2); }
+.panel__body .field-row { padding: 2px 0; }
+
+.status-group { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.status-option { position: relative; cursor: pointer; }
+.status-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.status-option .tag { opacity: .55; transition: opacity var(--transition-fast), box-shadow var(--transition-fast); }
+.status-option:hover .tag { opacity: .85; }
+.status-option input:checked + .tag { opacity: 1; box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px currentColor; }
+.status-option input:focus-visible + .tag { outline: 3px solid color-mix(in srgb, var(--color-accent) 45%, transparent); outline-offset: 4px; }
+
+.input[aria-invalid="true"] { border-color: var(--status-rejected-fg); }
+
+.panel__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+.panel__footer #panel-cancel { margin-left: auto; }
+
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 640px) {
+  .panel { left: 0; width: auto; border-left: 0; }
+}
