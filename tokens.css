@@ -1,32 +1,71 @@
-/* --- TOKENS PARTAGÉS (POPUP + DASHBOARD) --- */
+/* --- TOKENS PARTAGÉS (POPUP, DASHBOARD, WIDGET) --- */
 @font-face {
-  font-family: 'Outfit';
+  font-family: 'Plus Jakarta Sans';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('fonts/outfit-latin-wght-normal.woff2') format('woff2');
+  src: url('fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
 }
 
-:root {
-  --color-bg: #FAF8F5;
-  --color-bg-alt: rgba(255, 255, 255, 0.55);
-  --color-card-bg: #FCFAF5;
-  --color-border: rgba(10, 8, 7, 0.08);
+/* :host permet au widget (Shadow DOM) d'hériter des mêmes variables */
+:root, :host {
+  /* Surfaces et texte */
+  --color-bg: #F7F7FB;
+  --color-surface: #FFFFFF;
+  --color-border: #ECECF3;
+  --color-text: #1B1B3A;
+  --color-text-muted: #8A8AA3;
 
-  --color-primary: #1F1F1F; /* dark charcoal */
-  --color-primary-light: #2C2624;
-  --color-accent: #FFD25E; /* warm yellow */
-  --color-accent-light: rgba(255, 210, 94, 0.08);
-  --color-text-main: #1A1A1A;
-  --color-text-muted: #7B7A75;
+  /* Accent indigo */
+  --color-accent: #5B5BF6;
+  --color-accent-hover: #4A4AE0;
+  --color-accent-soft: #EEEEFE;
 
-  --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Statuts : fond pastel / texte foncé (contraste ≥ 4.5:1) */
+  --status-wishlist-bg: #F0F0F5;
+  --status-wishlist-fg: #4A4A68;
+  --status-applied-bg: #EEEEFE;
+  --status-applied-fg: #3B3BC4;
+  --status-interview-bg: #FFF1E6;
+  --status-interview-fg: #A2470B;
+  --status-offer-bg: #E7F7EE;
+  --status-offer-fg: #1C7A45;
+  --status-rejected-bg: #FDECEC;
+  --status-rejected-fg: #B42318;
+  --status-neutral-bg: #F4F4F8;
+  --status-neutral-fg: #5C5C78;
 
-  /* Extremely soft low-contrast shadows */
-  --shadow-sm: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
-  --shadow-md: 0 10px 24px -4px rgba(10, 8, 7, 0.05);
-  --shadow-lg: 0 20px 48px -6px rgba(10, 8, 7, 0.08);
+  /* Formes */
+  --radius-card: 14px;
+  --radius-field: 10px;
+  --radius-pill: 999px;
+
+  /* Espacements (grille de 4 px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Ombres très légères : la structure repose sur les bordures */
+  --shadow-sm: 0 1px 2px rgba(27, 27, 58, 0.04);
+  --shadow-panel: -12px 0 32px rgba(27, 27, 58, 0.08);
 
   --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Alias temporaires pour l'ancien popup.css / dashboard.css (retirés à la fin de la refonte) */
+  --color-bg-alt: var(--color-surface);
+  --color-card-bg: var(--color-surface);
+  --color-primary: var(--color-accent);
+  --color-primary-light: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-soft);
+  --color-text-main: var(--color-text);
+  --shadow-md: var(--shadow-sm);
+  --shadow-lg: var(--shadow-panel);
 }
