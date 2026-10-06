@@ -1,0 +1,108 @@
+const { test, before, after, describe } = require('node:test');
+const assert = require('node:assert/strict');
+const { launch, seed, readStore, openExtPage, shot, sleep } = require('./harness');
+const { SAMPLE, LONG_TITLE, base } = require('./fixtures');
+
+const LONG = { ...base, id: 'long', title: LONG_TITLE, company: 'Acme Corporation Internationale', status: 'applied', dateApplied: '2026-09-01', location: 'Paris' };
+const DATA = [...SAMPLE, LONG];
+
+let browser, extId;
+before(async () => ({ browser, extId } = await launch()));
+after(async () => browser && browser.close());
+
+const openPopup = (query = '') => openExtPage(browser, extId, `popup.html${query}`, { width: 360, height: 600 });
+
+// Lecture de l'état visible de la liste
+const listState = (page) => page.evaluate(() => ({
+  active: document.querySelector('.segmented__item[aria-selected="true"]')?.dataset.group,
+  counts: Object.fromEntries([...document.querySelectorAll('.segmented__item')].map((b) => [b.dataset.group, b.querySelector('.segmented__count').textContent.trim()])),
+  ids: [...document.querySelectorAll('#job-list .job-item')].map((b) => b.dataset.id),
+  empty: !!document.querySelector('#job-list .empty-state'),
+  countLabel: document.querySelector('#list-count')?.textContent.trim()
+}));
+
+const clickGroup = (page, group) => page.click(`.segmented__item[data-group="${group}"]`);
+
+describe('Popup — vue Liste', () => {
+  test('onglet par défaut « En cours », compteurs et tri', async () => {
+    await seed(browser, DATA);
+    const page = await openPopup();
+    await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+    await page.reload({ waitUntil: 'load' });
+    await sleep(300);
+    const s = await listState(page);
+    assert.equal(s.active, 'progress');
+    assert.deepEqual(s.counts, { todo: '3', progress: '4', done: '2' });
+    assert.deepEqual(s.ids, ['s2', 's1', 's3', 'long']);
+    assert.equal(s.countLabel, '4 candidatures');
+    const heights = await page.$$eval('.segmented__item', (els) => els.map((e) => e.getBoundingClientRect().height));
+    assert.ok(heights.every((h) => h <= 36), `onglet sur plusieurs lignes : ${heights}`);
+    await shot(page, 'popup-list');
+    assert.deepEqual(page.errors, []);
+    await page.close();
+  });
+
+  test('« À faire » : statut inconnu inclus, sans date en dernier', async () => {
+    const page = await openPopup();
+    await clickGroup(page, 'todo');
+    const s = await listState(page);
+    assert.deepEqual(s.ids, ['s4', 's8', 's5']);
+    await page.close();
+  });
+
+  test('un titre très long ne fait pas déborder la liste', async () => {
+    const page = await openPopup();
+    await clickGroup(page, 'progress');
+    const r = await page.evaluate(() => {
+      const list = document.getElementById('job-list');
+      const title = document.querySelector('.job-item[data-id="long"] .job-item__title');
+      return { list: list.scrollWidth <= list.clientWidth, doc: document.documentElement.scrollWidth <= 360, truncated: title.scrollWidth > title.clientWidth };
+    });
+    assert.ok(r.list && r.doc, 'débordement horizontal');
+    assert.ok(r.truncated, 'titre non tronqué');
+    await page.close();
+  });
+
+  test('la recherche filtre la liste', async () => {
+    const page = await openPopup();
+    await clickGroup(page, 'progress');
+    await page.click('#search-toggle');
+    await page.type('#search-input', 'acme');
+    const s = await listState(page);
+    assert.deepEqual(s.ids.sort(), ['long', 's1']);
+    await page.close();
+  });
+
+  test("l'onglet choisi est mémorisé", async () => {
+    const page = await openPopup();
+    await clickGroup(page, 'done');
+    await page.reload({ waitUntil: 'load' });
+    await sleep(300);
+    assert.equal((await listState(page)).active, 'done');
+    await clickGroup(page, 'progress');
+    await page.close();
+  });
+
+  test('état vide dans chaque onglet', async () => {
+    await seed(browser, []);
+    const page = await openPopup();
+    for (const g of ['todo', 'progress', 'done']) {
+      await clickGroup(page, g);
+      assert.ok((await listState(page)).empty, `pas d'état vide pour ${g}`);
+    }
+    await clickGroup(page, 'progress');
+    await shot(page, 'popup-empty');
+    await page.close();
+  });
+
+  test('mise à jour en direct', async () => {
+    await seed(browser, []);
+    const page = await openPopup();
+    await seed(browser, [{ ...base, id: 'live', title: 'Nouvelle', company: 'Live', status: 'applied', dateApplied: '2026-10-06' }]);
+    await sleep(500);
+    assert.deepEqual((await listState(page)).ids, ['live']);
+    await page.close();
+  });
+});
+
+module.exports = { DATA, openPopup: () => openPopup(), listState, clickGroup };
