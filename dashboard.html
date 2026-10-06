@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suivi de Candidatures - Tableau de Bord</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
@@ -56,7 +54,7 @@
       <div class="welcome-left">
         <h1 class="welcome-title">Welcome in your job board,</h1>
         <div class="welcome-pills">
-          <div class="stat-card metric-pill active" data-filter="wishlist">
+          <div class="stat-card metric-pill" data-filter="wishlist">
             <span>À postuler</span>
             <span class="pill-percentage" id="stat-wishlist">0</span>
           </div>
@@ -247,6 +245,7 @@
     </div>
   </div>
 
+  <script src="shared.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

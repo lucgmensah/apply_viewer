@@ -1,21 +1,3 @@
-:root {
-  --color-bg: #FAF8F5;
-  --color-bg-alt: rgba(255, 255, 255, 0.55);
-  --color-card-bg: #FCFAF5;
-  --color-border: rgba(10, 8, 7, 0.08);
-  
-  --color-primary: #1F1F1F; /* dark charcoal */
-  --color-primary-light: #2C2624;
-  --color-accent: #FFD25E; /* warm yellow */
-  --color-accent-light: rgba(255, 210, 94, 0.08);
-  --color-text-main: #1A1A1A;
-  --color-text-muted: #7B7A75;
-  
-  --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --shadow-sm: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
-  --shadow-md: 0 8px 24px -4px rgba(10, 8, 7, 0.06);
-}
-
 * {
   box-sizing: border-box;
   margin: 0;

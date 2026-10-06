@@ -1,27 +1,3 @@
-// --- GESTION DU STOCKAGE (FALLBACK LOCALSTORAGE) ---
-const storage = {
-  get: function(callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['candidatures'], function(result) {
-        callback(result.candidatures || []);
-      });
-    } else {
-      const data = localStorage.getItem('job_tracker_candidatures');
-      callback(data ? JSON.parse(data) : []);
-    }
-  },
-  set: function(candidatures, callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ candidatures }, function() {
-        if (callback) callback();
-      });
-    } else {
-      localStorage.setItem('job_tracker_candidatures', JSON.stringify(candidatures));
-      if (callback) callback();
-    }
-  }
-};
-
 // --- ÉLÉMENTS DU DOM ---
 const btnOpenDashboard = document.getElementById('btn-open-dashboard');
 const btnGoDashboard = document.getElementById('btn-go-dashboard');
@@ -80,11 +56,14 @@ function detectActiveJobDetails() {
     }
 
     // Traitement de la réponse de scraping
+    // Les champs sont pré-remplis même hors page d'offre (og:title, etc.),
+    // mais l'alerte « Offre détectée » n'apparaît que si `success` est vrai.
     const processScrapedDetails = (response) => {
-      const title = response && response.success ? response.title : (activeTab.title ? activeTab.title.split(' | ')[0].split(' - ')[0] : '');
-      const company = response && response.success ? response.company : '';
-      const location = response && response.success ? response.location : '';
-      const url = response && response.success ? response.url : activeTab.url;
+      const fallbackTitle = activeTab.title ? activeTab.title.split(' | ')[0].split(' - ')[0] : '';
+      const title = (response && response.title) || fallbackTitle;
+      const company = (response && response.company) || '';
+      const location = (response && response.location) || '';
+      const url = (response && response.url) || activeTab.url;
 
       quickTitle.value = title;
       quickCompany.value = company;
@@ -92,8 +71,8 @@ function detectActiveJobDetails() {
       quickUrl.value = url;
 
       // Vérifier si cette offre est déjà enregistrée en BDD
-      storage.get((candidatures) => {
-        const isDuplicate = checkDuplicateInList(candidatures, url, title, company);
+      JobTracker.getAll((candidatures) => {
+        const isDuplicate = JobTracker.isDuplicate(candidatures, { url, title, company });
         if (isDuplicate) {
           // Afficher une alerte de doublon
           scrapingAlert.innerHTML = `
@@ -104,7 +83,7 @@ function detectActiveJobDetails() {
           `;
           scrapingAlert.classList.add('duplicate');
           scrapingAlert.classList.remove('hidden');
-          
+
           // Désactiver le bouton d'enregistrement
           btnSave.textContent = "Déjà suivie";
           btnSave.disabled = true;
@@ -122,7 +101,7 @@ function detectActiveJobDetails() {
         // Tenter l'injection si pas chargé
         chrome.scripting.executeScript({
           target: { tabId: activeTab.id },
-          files: ['content.js']
+          files: ['shared.js', 'content.js']
         }, () => {
           if (chrome.runtime.lastError) {
             processScrapedDetails(null);
@@ -144,67 +123,35 @@ function detectActiveJobDetails() {
   });
 }
 
-// Fonction de détection des doublons
-function checkDuplicateInList(list, url, title, company) {
-  return list.some(c => {
-    const t1 = (c.title || '').trim().toLowerCase();
-    const t2 = (title || '').trim().toLowerCase();
-    const comp1 = (c.company || '').trim().toLowerCase();
-    const comp2 = (company || '').trim().toLowerCase();
-
-    // 1. Comparer l'URL (sans paramètres de tracking)
-    if (url && c.url) {
-      const cleanUrl1 = c.url.split('?')[0].split('#')[0];
-      const cleanUrl2 = url.split('?')[0].split('#')[0];
-      if (cleanUrl1 === cleanUrl2) return true;
-    }
-    
-    // 2. Si pas d'URL ou pas de match d'URL, vérifier par titre + entreprise
-    return t1 === t2 && comp1 === comp2 && t1.length > 0;
-  });
-}
-
 // Enregistrer la candidature
 function handleQuickAdd(e) {
   e.preventDefault();
 
-  const titleVal = quickTitle.value.trim();
-  const companyVal = quickCompany.value.trim();
-  const urlVal = quickUrl.value.trim();
-  const locationVal = quickLocation.value.trim();
+  const newCandidature = JobTracker.createCandidature({
+    title: quickTitle.value.trim(),
+    company: quickCompany.value.trim(),
+    status: quickStatus.value,
+    location: quickLocation.value.trim(),
+    url: quickUrl.value.trim(),
+    notes: "Ajouté rapidement depuis l'extension."
+  });
 
-  storage.get((candidatures) => {
+  JobTracker.update((candidatures) => {
     // Vérification de doublon avant sauvegarde (au cas où les champs ont été modifiés)
-    const isDuplicate = checkDuplicateInList(candidatures, urlVal, titleVal, companyVal);
-    if (isDuplicate) {
+    if (JobTracker.isDuplicate(candidatures, newCandidature)) return null;
+    return [newCandidature, ...candidatures];
+  }, (saved) => {
+    if (!saved) {
       alert("Cette offre (ou un lien similaire) est déjà enregistrée.");
       return;
     }
 
-    const newCandidature = {
-      id: 'uuid-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36),
-      title: titleVal,
-      company: companyVal,
-      status: quickStatus.value,
-      dateApplied: new Date().toISOString().slice(0, 10),
-      location: locationVal,
-      salary: '',
-      url: urlVal,
-      contactName: '',
-      contactEmail: '',
-      contactPhone: '',
-      notes: 'Ajouté rapidement depuis l\'extension.'
-    };
+    form.classList.add('hidden');
+    scrapingAlert.classList.add('hidden');
+    successMsg.classList.remove('hidden');
 
-    candidatures.unshift(newCandidature);
-    storage.set(candidatures, () => {
-      form.classList.add('hidden');
-      scrapingAlert.classList.add('hidden');
-      successMsg.classList.remove('hidden');
-      
-      setTimeout(() => {
-        window.close();
-      }, 1800);
-    });
+    setTimeout(() => {
+      window.close();
+    }, 1800);
   });
 }

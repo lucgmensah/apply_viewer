@@ -1,28 +1,3 @@
-// --- GESTION DU STOCKAGE (CHROME STORAGE OU LOCALSTORAGE FALLBACK) ---
-const storage = {
-  get: function(callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['candidatures'], function(result) {
-        callback(result.candidatures || []);
-      });
-    } else {
-      // Fallback local pour développement et test hors extension
-      const data = localStorage.getItem('job_tracker_candidatures');
-      callback(data ? JSON.parse(data) : []);
-    }
-  },
-  set: function(candidatures, callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ candidatures }, function() {
-        if (callback) callback();
-      });
-    } else {
-      localStorage.setItem('job_tracker_candidatures', JSON.stringify(candidatures));
-      if (callback) callback();
-    }
-  }
-};
-
 // --- VARIABLES D'ÉTAT ---
 let allCandidatures = [];
 let filteredCandidatures = [];
@@ -70,9 +45,15 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDragAndDrop();
 });
 
-// Charger les données
+// Charger les données et rester synchronisé avec le stockage
+// (ajouts depuis la popup ou le widget pendant que le dashboard est ouvert)
 function loadData() {
-  storage.get((data) => {
+  JobTracker.getAll((data) => {
+    allCandidatures = data;
+    applyFiltersAndRender();
+  });
+
+  JobTracker.onChange((data) => {
     allCandidatures = data;
     applyFiltersAndRender();
   });
@@ -262,21 +243,19 @@ function setupDragAndDrop() {
         const id = draggingCard.dataset.id;
         const newStatus = col.dataset.status;
         
-        // Mettre à jour dans la liste
-        allCandidatures = allCandidatures.map(cand => {
+        // Mettre à jour à partir de la version la plus récente du stockage
+        JobTracker.update((list) => list.map(cand => {
           if (cand.id === id) {
-            return { 
-              ...cand, 
+            return {
+              ...cand,
               status: newStatus,
-              // Mettre à jour automatiquement la date d'action si c'est "envoyée" ou "entretien"
-              dateApplied: (newStatus === 'applied' && !cand.dateApplied) ? new Date().toISOString().slice(0, 10) : cand.dateApplied
+              // Renseigner automatiquement la date d'envoi si elle est vide
+              dateApplied: (newStatus === 'applied' && !cand.dateApplied) ? JobTracker.todayISO() : cand.dateApplied
             };
           }
           return cand;
-        });
-
-        // Enregistrer et rafraîchir
-        storage.set(allCandidatures, () => {
+        }), (saved, list) => {
+          allCandidatures = list;
           applyFiltersAndRender();
         });
       }
@@ -312,7 +291,7 @@ function openModal(cand = null) {
     fieldId.value = '';
     
     // Date du jour par défaut
-    fieldDate.value = new Date().toISOString().slice(0, 10);
+    fieldDate.value = JobTracker.todayISO();
     fieldStatus.value = 'wishlist';
   }
   
@@ -329,7 +308,7 @@ function handleSaveCandidature(e) {
   
   const id = fieldId.value;
   const candidatureData = {
-    id: id || generateUUID(),
+    id: id || JobTracker.generateId(),
     title: fieldTitle.value.trim(),
     company: fieldCompany.value.trim(),
     status: fieldStatus.value,
@@ -343,40 +322,22 @@ function handleSaveCandidature(e) {
     notes: fieldNotes.value.trim()
   };
 
-  // Détection des doublons (exclure l'élément en cours de modification)
-  const isDuplicate = allCandidatures.some(c => {
-    if (c.id === id) return false;
+  JobTracker.update((list) => {
+    // Détection des doublons (exclure l'élément en cours de modification)
+    if (JobTracker.isDuplicate(list, candidatureData, id)) return null;
 
-    const t1 = (c.title || '').trim().toLowerCase();
-    const t2 = (candidatureData.title || '').trim().toLowerCase();
-    const comp1 = (c.company || '').trim().toLowerCase();
-    const comp2 = (candidatureData.company || '').trim().toLowerCase();
-
-    // 1. Comparer l'URL (sans paramètres de tracking)
-    if (candidatureData.url && c.url) {
-      const cleanUrl1 = c.url.split('?')[0].split('#')[0];
-      const cleanUrl2 = candidatureData.url.split('?')[0].split('#')[0];
-      if (cleanUrl1 === cleanUrl2) return true;
+    if (id) {
+      // Modification
+      return list.map(c => c.id === id ? candidatureData : c);
     }
-
-    // 2. Vérification par titre + entreprise
-    return t1 === t2 && comp1 === comp2;
-  });
-
-  if (isDuplicate) {
-    alert("Une candidature avec ce lien ou ce poste chez cette entreprise existe déjà !");
-    return;
-  }
-
-  if (id) {
-    // Modification
-    allCandidatures = allCandidatures.map(c => c.id === id ? candidatureData : c);
-  } else {
     // Nouvel ajout
-    allCandidatures.unshift(candidatureData);
-  }
-
-  storage.set(allCandidatures, () => {
+    return [candidatureData, ...list];
+  }, (saved, list) => {
+    if (!saved) {
+      alert("Une candidature avec ce lien ou ce poste chez cette entreprise existe déjà !");
+      return;
+    }
+    allCandidatures = list;
     applyFiltersAndRender();
     closeModal();
   });
@@ -388,8 +349,8 @@ function handleDeleteCandidature() {
   if (!id) return;
 
   if (confirm("Êtes-vous sûr de vouloir supprimer cette candidature ?")) {
-    allCandidatures = allCandidatures.filter(c => c.id !== id);
-    storage.set(allCandidatures, () => {
+    JobTracker.update((list) => list.filter(c => c.id !== id), (saved, list) => {
+      allCandidatures = list;
       applyFiltersAndRender();
       closeModal();
     });
@@ -443,8 +404,11 @@ function handleExportCSV() {
   const csvContent = [
     headers.join(";"),
     ...rows.map(row => row.map(val => {
+      // Neutraliser les formules Excel (=, +, -, @) issues de contenus scrapés
+      let text = String(val);
+      if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
       // Échapper les guillemets et remplacer les retours à la ligne par des espaces
-      const escaped = String(val).replace(/"/g, '""').replace(/\r?\n|\r/g, " ");
+      const escaped = text.replace(/"/g, '""').replace(/\r?\n|\r/g, " ");
       return `"${escaped}"`;
     }).join(";"))
   ].join("\r\n");
@@ -453,7 +417,7 @@ function handleExportCSV() {
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = JobTracker.todayISO();
   
   link.setAttribute("href", url);
   link.setAttribute("download", `suivi_candidatures_${dateStr}.csv`);
@@ -461,19 +425,8 @@ function handleExportCSV() {
   
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 // --- UTILS ---
-function generateUUID() {
-  return 'uuid-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
-}
-
-function escapeHTML(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+const escapeHTML = JobTracker.escapeHTML;
