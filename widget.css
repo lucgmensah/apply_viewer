@@ -1,0 +1,77 @@
+/* --- WIDGET INJECTÉ (SHADOW DOM) --- */
+/* Chargé après tokens.css et components.css */
+
+:host {
+  /* Police enregistrée par content.js via l'API FontFace (un @font-face dans un Shadow DOM n'est pas appliqué) */
+  --font-main: 'JobTrackerJakarta', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Isoler le widget des styles hérités de la page hôte */
+.widget-container {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483000;
+  font-family: var(--font-main);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+  text-align: left;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 6px 20px rgba(27, 27, 58, 0.10);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+.wt-pill:hover { border-color: var(--color-accent); transform: translateY(-1px); }
+.wt-pill svg { width: 16px; height: 16px; color: var(--color-accent); flex-shrink: 0; }
+.wt-pill .tag { padding: 2px 8px; font-size: 11px; }
+
+.wt-panel {
+  width: 320px;
+  padding: var(--space-4);
+  box-shadow: 0 12px 32px rgba(27, 27, 58, 0.14);
+  animation: wt-in var(--transition-normal);
+}
+
+.wt-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-weight: 700;
+}
+.wt-panel__header .icon-btn { margin-left: auto; width: 28px; height: 28px; border-color: transparent; }
+
+.wt-form { display: grid; gap: var(--space-3); }
+.wt-field { display: grid; gap: var(--space-1); }
+.wt-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.wt-label { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.wt-form .btn { width: 100%; margin-top: var(--space-1); }
+
+.wt-success {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 600;
+}
+.wt-success svg { width: 28px; height: 28px; color: var(--status-offer-fg); flex-shrink: 0; }
+
+@keyframes wt-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}

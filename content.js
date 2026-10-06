@@ -7,7 +7,7 @@
   window.__jobTrackerContentLoaded = true;
 
   const ROOT_ID = 'job-tracker-floating-root';
-  const FONT_FAMILY = 'JobTrackerOutfit';
+  const FONT_FAMILY = 'JobTrackerJakarta';
   const RENDER_DELAY_MS = 2000; // Laisser le temps aux pages React de rendre l'offre
   const URL_POLL_MS = 1000;
 
@@ -50,8 +50,9 @@
       JobTracker.getAll((list) => {
         // L'utilisateur a pu changer d'offre pendant la lecture du stockage
         if (currentKey !== key) return;
-        if (JobTracker.isDuplicate(list, details)) {
-          injectAlreadyTrackedWidget();
+        const tracked = JobTracker.findDuplicate(list, details);
+        if (tracked) {
+          injectAlreadyTrackedWidget(tracked);
         } else {
           injectFloatingWidget(details);
         }
@@ -229,8 +230,8 @@
     try {
       const face = new FontFace(
         FONT_FAMILY,
-        `url(${chrome.runtime.getURL('fonts/outfit-latin-wght-normal.woff2')})`,
-        { weight: '100 900', display: 'swap' }
+        `url(${chrome.runtime.getURL('fonts/plus-jakarta-sans-latin-wght-normal.woff2')})`,
+        { weight: '200 800', display: 'swap' }
       );
       document.fonts.add(face);
       face.load().catch(() => {});
@@ -240,331 +241,121 @@
   }
 
   // --- HÔTE DU WIDGET ---
+  const STYLESHEETS = ['tokens.css', 'components.css', 'widget.css'];
+
   function removeWidget() {
     const existing = document.getElementById(ROOT_ID);
     if (existing) existing.remove();
   }
 
-  function createWidgetRoot(css, html) {
+  // Crée l'hôte Shadow DOM avec les feuilles de style partagées.
+  // Le widget reste invisible jusqu'au chargement des styles (pas de flash sans style).
+  function createWidgetRoot(html) {
     removeWidget();
     ensureFont();
 
     const host = document.createElement('div');
     host.id = ROOT_ID;
     document.body.appendChild(host);
-
     const shadow = host.attachShadow({ mode: 'open' });
-
-    const style = document.createElement('style');
-    style.textContent = css;
 
     const container = document.createElement('div');
     container.className = 'widget-container';
+    container.style.visibility = 'hidden';
     container.innerHTML = html;
 
-    shadow.appendChild(style);
+    let pending = STYLESHEETS.length;
+    const reveal = () => {
+      pending -= 1;
+      if (pending === 0) container.style.visibility = '';
+    };
+    STYLESHEETS.forEach((file) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = chrome.runtime.getURL(file);
+      link.addEventListener('load', reveal);
+      link.addEventListener('error', reveal);
+      shadow.appendChild(link);
+    });
+
     shadow.appendChild(container);
     return { shadow, container };
   }
 
-  const BASE_CSS = `
-    .widget-container {
-      font-family: '${FONT_FAMILY}', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 99999999;
-      color: #1A1A1A;
-    }
-  `;
+  const ICONS = {
+    briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>',
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="16 9 10.5 15 8 12.5"></polyline></svg>'
+  };
 
-  // --- INJECTION DU WIDGET FLOTTANT ---
+  // --- WIDGET D'AJOUT ---
   function injectFloatingWidget(details) {
-    const css = BASE_CSS + `
-      /* Bouton flottant réduit */
-      .widget-trigger {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background-color: #FFFFFF;
-        border: 1px solid rgba(10, 8, 7, 0.12);
-        color: #1F1F1F;
-        padding: 10px 18px;
-        border-radius: 30px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
-        font-size: 13px;
-        font-weight: 600;
-        transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-        user-select: none;
-      }
-
-      .widget-trigger:hover {
-        transform: translateY(-2px);
-        border-color: #1F1F1F;
-        box-shadow: 0 6px 16px -2px rgba(10, 8, 7, 0.06);
-      }
-
-      .widget-trigger.hidden {
-        display: none;
-      }
-
-      .icon-briefcase {
-        width: 16px;
-        height: 16px;
-      }
-
-      /* Panneau d'ajout complet */
-      .widget-panel {
-        display: none;
-        flex-direction: column;
-        width: 320px;
-        background-color: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(10, 8, 7, 0.1);
-        border-radius: 24px;
-        box-shadow: 0 8px 24px rgba(10, 8, 7, 0.05);
-        padding: 16px;
-        animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-
-      .widget-panel.open {
-        display: flex;
-      }
-
-      @keyframes slideIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      /* Header du panneau */
-      .panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-        border-bottom: 1px solid rgba(10, 8, 7, 0.08);
-        padding-bottom: 8px;
-      }
-
-      .panel-header h3 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 700;
-        color: #1F1F1F;
-        letter-spacing: -0.01em;
-      }
-
-      .btn-close {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: #7B7A75;
-        padding: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        transition: all 0.15s ease;
-        width: 24px;
-        height: 24px;
-      }
-
-      .btn-close:hover {
-        background-color: rgba(10, 8, 7, 0.05);
-        color: #1F1F1F;
-      }
-
-      /* Champs du formulaire */
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin-bottom: 8px;
-      }
-
-      .form-row {
-        display: flex;
-        gap: 8px;
-      }
-
-      .form-row .form-group {
-        flex: 1;
-      }
-
-      label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #1F1F1F;
-      }
-
-      input, select {
-        font-family: inherit;
-        font-size: 12px;
-        padding: 6px 12px;
-        border: 1px solid rgba(10, 8, 7, 0.1);
-        border-radius: 30px;
-        color: #1A1A1A;
-        background-color: #FFFFFF;
-        outline: none;
-        transition: all 0.15s ease;
-      }
-
-      input:focus, select:focus {
-        border-color: #1F1F1F;
-        box-shadow: 0 0 0 3px rgba(31, 31, 31, 0.08);
-      }
-
-      /* Boutons */
-      .form-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 10px;
-      }
-
-      .btn {
-        font-family: inherit;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 8px;
-        border-radius: 30px;
-        cursor: pointer;
-        text-align: center;
-        border: 1px solid transparent;
-        transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      .btn-solid {
-        background-color: #1F1F1F;
-        color: #FFFFFF;
-      }
-
-      .btn-solid:hover {
-        background-color: #000000;
-        transform: translateY(-1px);
-      }
-
-      /* Message succès */
-      .success-panel {
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 16px 8px;
-        gap: 8px;
-      }
-
-      .success-panel.open {
-        display: flex;
-      }
-
-      .icon-success {
-        color: #FFD25E;
-      }
-
-      .success-panel p {
-        margin: 0;
-        font-size: 13px;
-        font-weight: 700;
-        color: #1F1F1F;
-      }
-    `;
-
     const esc = JobTracker.escapeHTML;
-    const html = `
-      <!-- Bouton réduit -->
-      <div class="widget-trigger" id="widget-trigger">
-        <svg class="icon-briefcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-        </svg>
-        <span>Suivre cette offre</span>
-      </div>
+    const statusOptions = UI.STATUSES
+      .map((s) => `<option value="${s.id}"${s.id === 'applied' ? ' selected' : ''}>${esc(s.short)}</option>`)
+      .join('');
 
-      <!-- Formulaire d'ajout rapide -->
-      <div class="widget-panel" id="widget-panel">
-        <div class="panel-header">
-          <h3>Ajouter au Job Tracker</h3>
-          <button class="btn-close" id="btn-close-panel" aria-label="Fermer">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
+    const { shadow } = createWidgetRoot(`
+      <button type="button" class="wt-pill">${ICONS.briefcase}<span>Suivre cette offre</span></button>
+
+      <div class="wt-panel card hidden" role="dialog" aria-label="Ajouter au suivi">
+        <div class="wt-panel__header">
+          <span class="logo-dot" aria-hidden="true"></span>
+          <span>Apply View</span>
+          <button type="button" class="icon-btn wt-close" aria-label="Fermer">${ICONS.close}</button>
         </div>
-
-        <form id="widget-form">
-          <div class="form-group">
-            <label for="widget-title">Poste *</label>
-            <input type="text" id="widget-title" required value="${esc(details.title)}">
+        <form class="wt-form">
+          <div class="wt-field">
+            <label class="wt-label" for="wt-title">Poste *</label>
+            <input class="input" type="text" id="wt-title" required value="${esc(details.title)}">
           </div>
-
-          <div class="form-group">
-            <label for="widget-company">Entreprise *</label>
-            <input type="text" id="widget-company" required value="${esc(details.company)}">
+          <div class="wt-field">
+            <label class="wt-label" for="wt-company">Entreprise *</label>
+            <input class="input" type="text" id="wt-company" required value="${esc(details.company)}">
           </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="widget-status">Statut</label>
-              <select id="widget-status">
-                <option value="wishlist">À postuler</option>
-                <option value="applied" selected>Candidature envoyée</option>
-                <option value="interview">Entretien</option>
-              </select>
+          <div class="wt-row">
+            <div class="wt-field">
+              <label class="wt-label" for="wt-status">Statut</label>
+              <select class="select" id="wt-status">${statusOptions}</select>
             </div>
-            <div class="form-group">
-              <label for="widget-location">Lieu</label>
-              <input type="text" id="widget-location" value="${esc(details.location)}">
+            <div class="wt-field">
+              <label class="wt-label" for="wt-location">Lieu</label>
+              <input class="input" type="text" id="wt-location" value="${esc(details.location)}">
             </div>
           </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-solid">Ajouter au Suivi</button>
-          </div>
+          <button type="submit" class="btn btn--primary">Ajouter au suivi</button>
         </form>
       </div>
 
-      <!-- Message de Succès -->
-      <div class="widget-panel success-panel" id="success-panel">
-        <svg class="icon-success" viewBox="0 0 24 24" width="32" height="32">
-          <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
-        <p>Offre ajoutée avec succès !</p>
-      </div>
-    `;
+      <div class="wt-panel card wt-success hidden" role="status">${ICONS.success}<span>Offre ajoutée au suivi</span></div>
+    `);
 
-    const { shadow, container } = createWidgetRoot(css, html);
+    const pill = shadow.querySelector('.wt-pill');
+    const panel = shadow.querySelector('.wt-panel');
+    const success = shadow.querySelector('.wt-success');
+    const formEl = shadow.querySelector('.wt-form');
 
-    // --- LOGIQUE D'INTERACTION DANS LE SHADOW DOM ---
-    const trigger = shadow.getElementById('widget-trigger');
-    const panel = shadow.getElementById('widget-panel');
-    const success = shadow.getElementById('success-panel');
-    const btnClose = shadow.getElementById('btn-close-panel');
-    const formEl = shadow.getElementById('widget-form');
-
-    // Ouvrir le panneau
-    trigger.addEventListener('click', () => {
-      trigger.classList.add('hidden');
-      panel.classList.add('open');
+    pill.addEventListener('click', () => {
+      pill.classList.add('hidden');
+      panel.classList.remove('hidden');
+      shadow.getElementById('wt-title').focus();
     });
 
-    // Fermer le panneau
-    btnClose.addEventListener('click', () => {
-      panel.classList.remove('open');
-      trigger.classList.remove('hidden');
+    shadow.querySelector('.wt-close').addEventListener('click', () => {
+      panel.classList.add('hidden');
+      pill.classList.remove('hidden');
+      pill.focus();
     });
 
-    // Enregistrer
     formEl.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const newJob = JobTracker.createCandidature({
-        title: shadow.getElementById('widget-title').value.trim(),
-        company: shadow.getElementById('widget-company').value.trim(),
-        status: shadow.getElementById('widget-status').value,
-        location: shadow.getElementById('widget-location').value.trim(),
+        title: shadow.getElementById('wt-title').value.trim(),
+        company: shadow.getElementById('wt-company').value.trim(),
+        status: shadow.getElementById('wt-status').value,
+        location: shadow.getElementById('wt-location').value.trim(),
         url: details.url,
         notes: 'Ajouté automatiquement depuis l\'offre en ligne via le widget.'
       });
@@ -578,71 +369,31 @@
           alert("Cette candidature est déjà enregistrée !");
           return;
         }
+        panel.classList.add('hidden');
+        success.classList.remove('hidden');
 
-        // Afficher l'écran succès
-        panel.classList.remove('open');
-        success.classList.add('open');
-
-        // Masquer complètement le widget après 2 secondes
-        setTimeout(() => {
-          container.style.display = 'none';
-        }, 2000);
+        // L'offre est désormais suivie : afficher son statut
+        setTimeout(() => injectAlreadyTrackedWidget(newJob), 2000);
       });
     });
   }
 
   // --- WIDGET POUR OFFRE DÉJÀ SUIVIE ---
-  function injectAlreadyTrackedWidget() {
-    const css = BASE_CSS + `
-      .widget-trigger-saved {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background-color: #FFFFFF;
-        border: 1px solid rgba(10, 8, 7, 0.12);
-        color: #FFD25E;
-        padding: 10px 18px;
-        border-radius: 30px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px -2px rgba(10, 8, 7, 0.03);
-        font-size: 13px;
-        font-weight: 600;
-        transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-        user-select: none;
-      }
-
-      .widget-trigger-saved:hover {
-        transform: translateY(-2px);
-        border-color: #1F1F1F;
-        box-shadow: 0 6px 16px -2px rgba(10, 8, 7, 0.06);
-      }
-
-      .icon-check {
-        width: 16px;
-        height: 16px;
-        color: #FFD25E;
-      }
-    `;
-
-    const html = `
-      <div class="widget-trigger-saved" id="btn-open-db">
-        <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-        <span>Offre déjà suivie</span>
-      </div>
-    `;
-
-    const { shadow } = createWidgetRoot(css, html);
+  function injectAlreadyTrackedWidget(candidature) {
+    const { shadow } = createWidgetRoot(`
+      <button type="button" class="wt-pill" title="Ouvrir dans le tableau de bord">
+        ${ICONS.check}<span>Offre déjà suivie</span>${UI.statusTag(candidature.status)}
+      </button>
+    `);
 
     // Une page web ne peut pas ouvrir directement une page de l'extension :
     // on demande au service worker d'ouvrir l'onglet.
-    shadow.getElementById('btn-open-db').addEventListener('click', () => {
+    shadow.querySelector('.wt-pill').addEventListener('click', () => {
       try {
-        chrome.runtime.sendMessage({ action: 'openDashboard' });
+        chrome.runtime.sendMessage({ action: 'openDashboard', id: candidature.id });
       } catch (e) {
         // Contexte invalidé (extension rechargée) : recharger la page suffit
-        console.warn("Job Tracker : rechargez la page pour réactiver l'extension.", e);
+        console.warn("Apply View : rechargez la page pour réactiver l'extension.", e);
       }
     });
   }
