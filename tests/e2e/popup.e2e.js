@@ -106,3 +106,91 @@ describe('Popup — vue Liste', () => {
 });
 
 module.exports = { DATA, openPopup: () => openPopup(), listState, clickGroup };
+
+// --- Tâche 6 : bandeau et vue Ajout ---
+const { worker, findLinkedInJobUrl, waitForTab } = require('./harness');
+
+// Crée un onglet depuis l'extension pour connaître son id
+async function createTab(url) {
+  const w = await worker(browser);
+  return w.evaluate((u) => new Promise((r) => chrome.tabs.create({ url: u, active: false }, (t) => r(t.id))), url);
+}
+
+const visibleView = (page) => page.evaluate(() => ['list', 'detail', 'add'].find((v) => !document.getElementById(`view-${v}`).classList.contains('hidden')));
+
+async function waitFor(page, fn, timeout = 15000) {
+  await page.waitForFunction(fn, { timeout });
+}
+
+describe('Popup — bandeau et ajout', () => {
+  let jobUrl, jobTabId;
+
+  before(async () => {
+    jobUrl = await findLinkedInJobUrl(browser);
+    jobTabId = await createTab(jobUrl);
+    await sleep(6000); // chargement de l'offre
+  });
+
+  test("offre non suivie : bandeau, ajout pré-rempli, puis détail avec toast", async () => {
+    await seed(browser, SAMPLE);
+    const page = await openExtPage(browser, extId, `popup.html?tabId=${jobTabId}`, { width: 360, height: 600 });
+    await waitFor(page, () => document.querySelector('#banner #banner-action'));
+    const banner = await page.$eval('#banner', (b) => b.textContent);
+    assert.match(banner, /Ajouter cette offre/);
+    await shot(page, 'popup-banner-new');
+
+    await page.click('#banner-action');
+    assert.equal(await visibleView(page), 'add');
+    const values = await page.evaluate(() => [document.getElementById('add-title').value, document.getElementById('add-company').value]);
+    assert.ok(values[0].length > 0 && values[1].length > 0, `champs vides : ${values}`);
+    await shot(page, 'popup-add');
+
+    await page.click('#add-submit');
+    await waitFor(page, () => !document.getElementById('view-detail').classList.contains('hidden'));
+    const toast = await page.$eval('.toast', (t) => t.textContent);
+    assert.match(toast, /Offre ajoutée/);
+    const store = await readStore(browser);
+    assert.equal(store.length, SAMPLE.length + 1);
+    assert.equal(store[0].title, values[0]);
+    await page.close();
+  });
+
+  test('offre déjà suivie : bandeau « Déjà suivie » + statut, ouvre le détail', async () => {
+    const page = await openExtPage(browser, extId, `popup.html?tabId=${jobTabId}`, { width: 360, height: 600 });
+    await waitFor(page, () => document.querySelector('#banner #banner-action'));
+    const r = await page.$eval('#banner', (b) => ({ text: b.textContent, tag: !!b.querySelector('.tag') }));
+    assert.match(r.text, /Déjà suivie/);
+    assert.ok(r.tag);
+    await shot(page, 'popup-banner-tracked');
+    await page.click('#banner-action');
+    assert.equal(await visibleView(page), 'detail');
+    await page.close();
+  });
+
+  test('page interne de Chrome : pas de bandeau, pas d\'erreur', async () => {
+    const tabId = await createTab('chrome://version');
+    const page = await openExtPage(browser, extId, `popup.html?tabId=${tabId}`, { width: 360, height: 600 });
+    await sleep(1500);
+    assert.ok(await page.$eval('#banner', (b) => b.classList.contains('hidden')));
+    assert.deepEqual(page.errors, []);
+    await page.close();
+  });
+
+  test('« + » ouvre un formulaire vide ; un doublon est signalé sans enregistrement', async () => {
+    await seed(browser, SAMPLE);
+    const page = await openPopup();
+    await page.click('#btn-add');
+    assert.equal(await visibleView(page), 'add');
+    const r = await page.evaluate(() => ({ title: document.getElementById('add-title').value, status: document.getElementById('add-status').value }));
+    assert.deepEqual(r, { title: '', status: 'wishlist' });
+
+    await page.type('#add-title', 'UX Designer');
+    await page.type('#add-company', 'Qux');
+    await page.click('#add-submit');
+    await sleep(300);
+    assert.match(await page.$eval('#add-error', (e) => e.textContent), /Cette offre est déjà dans votre suivi\./);
+    assert.equal((await readStore(browser)).length, SAMPLE.length);
+    assert.equal(await visibleView(page), 'add');
+    await page.close();
+  });
+});

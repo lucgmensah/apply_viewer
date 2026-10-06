@@ -54,3 +54,12 @@ body {
 .banner__text { min-width: 0; display: grid; gap: 2px; }
 .banner__eyebrow { font-size: 11px; font-weight: 600; color: var(--color-accent); text-transform: uppercase; letter-spacing: .04em; }
 .banner__title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner__tracked { padding: 0; border: 0; background: none; cursor: pointer; flex-shrink: 0; }
+.banner__tracked .tag { background: var(--color-surface); }
+
+/* --- FORMULAIRE D'AJOUT --- */
+.form-stack { display: grid; gap: var(--space-3); }
+.form-field { display: grid; gap: var(--space-1); font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.form-field .input, .form-field .select { color: var(--color-text); font-weight: 500; }
+.form-error { margin: 0; color: var(--status-rejected-fg); font-size: 13px; font-weight: 600; }
+.form-error:empty { display: none; }
