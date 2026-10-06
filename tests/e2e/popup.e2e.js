@@ -316,3 +316,34 @@ describe('Popup — corrections de la relecture', () => {
     await page.close();
   });
 });
+
+// --- Régression : pré-remplissage du formulaire « + » avec la page ouverte ---
+describe('Popup — pré-remplissage depuis la page ouverte', () => {
+  test('« + » sur une offre détectée reprend ses informations', async () => {
+    await seed(browser, []);
+    const jobUrl = await findLinkedInJobUrl(browser);
+    const tabId = await createTab(jobUrl);
+    await sleep(6000);
+    const page = await openExtPage(browser, extId, `popup.html?tabId=${tabId}`, { width: 360, height: 600 });
+    await waitFor(page, () => document.querySelector('#banner #banner-action'));
+    await page.click('#btn-add');
+    const r = await page.evaluate(() => ({ title: document.getElementById('add-title').value, url: document.getElementById('add-url').value }));
+    assert.ok(r.title.length > 0, 'titre vide');
+    assert.match(r.url, /\/jobs\/view\//);
+    await page.close();
+  });
+
+  test('« + » sur une page non reconnue reprend son titre et son URL', async () => {
+    const tabId = await createTab('https://fr.linkedin.com/company/devoteam');
+    await sleep(6000);
+    const page = await openExtPage(browser, extId, `popup.html?tabId=${tabId}`, { width: 360, height: 600 });
+    await sleep(3000);
+    assert.ok(await page.$eval('#banner', (b) => b.classList.contains('hidden')), 'bandeau affiché sur une page qui n\'est pas une offre');
+    await page.click('#btn-add');
+    const r = await page.evaluate(() => ({ title: document.getElementById('add-title').value, url: document.getElementById('add-url').value, status: document.getElementById('add-status').value }));
+    assert.ok(r.title.length > 0, 'titre vide');
+    assert.match(r.url, /linkedin\.com/);
+    assert.equal(r.status, 'wishlist');
+    await page.close();
+  });
+});

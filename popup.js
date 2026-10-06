@@ -16,7 +16,9 @@ const state = {
   query: '',
   list: [],
   detected: null, // offre détectée dans l'onglet courant
-  addPrefill: null // valeurs initiales de la vue Ajout
+  pageInfo: null, // titre / URL de la page ouverte, même hors offre reconnue
+  addPrefill: null, // valeurs initiales de la vue Ajout
+  addStatus: 'wishlist' // statut proposé dans la vue Ajout
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -38,7 +40,10 @@ function saveGroup(group) {
 
 // --- INITIALISATION ---
 document.addEventListener('DOMContentLoaded', () => {
-  $('#btn-add').addEventListener('click', () => openAdd(null));
+  $('#btn-add').addEventListener('click', () => {
+    if (state.detected) openAdd(state.detected, 'applied');
+    else openAdd(state.pageInfo, 'wishlist');
+  });
   $('#btn-dashboard').addEventListener('click', () => openDashboard());
 
   $('.segmented').addEventListener('click', (e) => {
@@ -64,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!e.target.closest('#banner-action')) return;
     const tracked = trackedOffer();
     if (tracked) go('detail', tracked.id);
-    else openAdd(state.detected);
+    else openAdd(state.detected, 'applied');
   });
 
   JobTracker.getAll((list) => {
@@ -135,9 +140,18 @@ function askJobDetails(tabId) {
   });
 }
 
+// Titre d'onglet sans le nom du site (« Poste - Entreprise | Site » → « Poste »)
+function cleanTabTitle(title) {
+  return (title || '').split(' | ')[0].split(' - ')[0].trim();
+}
+
 async function detectCurrentOffer() {
   const tab = await getTargetTab();
   if (!tab || isInternalUrl(tab.url)) return;
+
+  // Informations de la page, même si ce n'est pas une offre reconnue :
+  // elles pré-remplissent l'ajout manuel (« + »), comme l'ancienne popup.
+  if (tab.url) state.pageInfo = { title: cleanTabTitle(tab.title), company: '', location: '', url: tab.url };
 
   let response = await askJobDetails(tab.id);
   if (response === undefined) {
@@ -149,6 +163,15 @@ async function detectCurrentOffer() {
       );
     });
     if (injected) response = await askJobDetails(tab.id);
+  }
+
+  if (response && (response.title || response.company)) {
+    state.pageInfo = {
+      title: response.title || (state.pageInfo && state.pageInfo.title) || '',
+      company: response.company || '',
+      location: response.location || '',
+      url: response.url || tab.url || ''
+    };
   }
 
   if (response && response.success) {
@@ -331,8 +354,9 @@ function bindStatusMenu(id) {
 }
 
 // --- VUE AJOUT ---
-function openAdd(prefill) {
+function openAdd(prefill, status = 'wishlist') {
   state.addPrefill = prefill;
+  state.addStatus = status;
   go('add');
 }
 
@@ -343,7 +367,7 @@ function renderAdd() {
   view.dataset.built = '1';
 
   const p = state.addPrefill || {};
-  const status = p.title ? 'applied' : 'wishlist';
+  const status = state.addStatus;
   const options = UI.STATUSES
     .map((s) => `<option value="${s.id}"${s.id === status ? ' selected' : ''}>${esc(s.label)}</option>`)
     .join('');
