@@ -116,17 +116,23 @@ var JobTracker = window.JobTracker || (() => {
 
   const normalize = (str) => String(str || '').trim().toLowerCase();
 
-  // Doublon : même offre (par URL) ou, à défaut d'URL, même poste dans la même entreprise
-  function isDuplicate(list, candidate, excludeId) {
+  // Candidature correspondant à la même offre (par URL) ou, à défaut d'URL,
+  // au même poste dans la même entreprise. null si aucune.
+  function findDuplicate(list, candidate, excludeId) {
     const key = jobKey(candidate.url);
     const title = normalize(candidate.title);
     const company = normalize(candidate.company);
 
-    return list.some((item) => {
+    const match = list.find((item) => {
       if (excludeId && item.id === excludeId) return false;
       if (key && item.url) return jobKey(item.url) === key;
       return title.length > 0 && normalize(item.title) === title && normalize(item.company) === company;
     });
+    return match || null;
+  }
+
+  function isDuplicate(list, candidate, excludeId) {
+    return findDuplicate(list, candidate, excludeId) !== null;
   }
 
   // --- CRÉATION ---
@@ -179,6 +185,7 @@ var JobTracker = window.JobTracker || (() => {
     siteJobKey,
     jobKey,
     isSupportedSite,
+    findDuplicate,
     isDuplicate,
     generateId,
     todayISO,
