@@ -54,19 +54,31 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
 }
 
-// URL d'une vraie offre LinkedIn consultable sans connexion
+// URL d'une vraie offre LinkedIn consultable sans connexion.
+// L'accès invité est parfois limité : plusieurs tentatives avec des recherches différentes.
 async function findLinkedInJobUrl(browser) {
-  const page = await browser.newPage();
-  await page.goto('https://www.linkedin.com/jobs/search?keywords=developpeur&location=France', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await sleep(4000);
-  const href = await page.evaluate(() => {
-    const a = document.querySelector('a.base-card__full-link, a[href*="/jobs/view/"]');
-    return a ? a.href : null;
-  });
-  await page.close();
-  if (!href) throw new Error('Aucune offre LinkedIn trouvée (accès invité bloqué ?)');
-  const u = new URL(href);
-  return u.origin + u.pathname;
+  const keywords = ['developpeur', 'data', 'designer'];
+  for (let attempt = 0; attempt < keywords.length; attempt++) {
+    const page = await browser.newPage();
+    try {
+      await page.goto(`https://www.linkedin.com/jobs/search?keywords=${keywords[attempt]}&location=France`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await sleep(4000);
+      const href = await page.evaluate(() => {
+        const a = document.querySelector('a.base-card__full-link, a[href*="/jobs/view/"]');
+        return a ? a.href : null;
+      });
+      if (href) {
+        const u = new URL(href);
+        return u.origin + u.pathname;
+      }
+    } catch (e) {
+      // Nouvelle tentative
+    } finally {
+      await page.close();
+    }
+    await sleep(3000 * (attempt + 1));
+  }
+  throw new Error('Aucune offre LinkedIn trouvée (accès invité bloqué ?)');
 }
 
 // Attend un nouvel onglet dont l'URL satisfait le prédicat
