@@ -39,6 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   JobTracker.onChange((list) => {
     state.list = list;
+    // La candidature ouverte a été supprimée ailleurs (popup, autre onglet)
+    if (state.panelId && state.panelId !== 'new' && !list.some((c) => c.id === state.panelId)) {
+      closePanel();
+      UI.toast('Cette candidature a été supprimée');
+    }
     render();
   });
 });
@@ -331,8 +336,36 @@ function savePanel() {
   });
 }
 
-// Suppression (tâche 10)
-function deleteCandidature(id) {}
+// Suppression immédiate, annulable pendant 5 s (réinsertion à la position d'origine)
+function deleteCandidature(id) {
+  let removed = null;
+  // Fermer avant d'écrire : onChange peut arriver avant le retour de l'écriture
+  // et ne doit pas prendre cette suppression pour une suppression faite ailleurs.
+  closePanel();
+  JobTracker.update((list) => {
+    const index = list.findIndex((c) => c.id === id);
+    if (index === -1) return null;
+    removed = { item: list[index], index };
+    return list.filter((c) => c.id !== id);
+  }, (saved, list) => {
+    state.list = list;
+    render();
+    if (!saved) return;
+    UI.toast('Candidature supprimée', {
+      actionLabel: 'Annuler',
+      duration: 5000,
+      onAction: () => JobTracker.update((current) => {
+        if (current.some((c) => c.id === removed.item.id)) return null;
+        const next = current.slice();
+        next.splice(Math.min(removed.index, next.length), 0, removed.item);
+        return next;
+      }, (restored, restoredList) => {
+        state.list = restoredList;
+        render();
+      })
+    });
+  });
+}
 
 // --- EXPORT CSV ---
 function handleExportCSV() {

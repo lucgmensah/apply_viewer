@@ -293,3 +293,79 @@ describe('Dashboard — panneau de détail', () => {
     await page.close();
   });
 });
+
+// --- Tâche 10 : suppression annulable, cas concurrents ---
+const fs = require('node:fs');
+const path = require('node:path');
+
+async function openAndDelete(page, id) {
+  await page.click(`.kanban-card[data-id="${id}"]`);
+  await page.click('#panel-delete');
+  await sleep(300);
+}
+
+describe('Dashboard — suppression et cas concurrents', () => {
+  test('supprimer puis annuler réinsère à la position d\'origine', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await openAndDelete(page, 's3');
+    assert.equal(await page.$('.kanban-card[data-id="s3"]'), null, 'carte toujours affichée');
+    assert.ok(!(await readStore(browser)).some((c) => c.id === 's3'));
+    assert.equal((await panelState(page)).open, false);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Candidature supprimée/);
+
+    await page.click('.toast__action');
+    await sleep(300);
+    const ids = (await readStore(browser)).map((c) => c.id);
+    assert.equal(ids.indexOf('s3'), DATA.findIndex((c) => c.id === 's3'));
+    assert.ok(await page.$('.kanban-card[data-id="s3"]'));
+    await page.close();
+  });
+
+  test('sans annulation, la suppression reste après 5 s', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await openAndDelete(page, 's3');
+    await sleep(5500);
+    assert.equal(await page.$('.toast'), null, 'toast toujours affiché');
+    assert.ok(!(await readStore(browser)).some((c) => c.id === 's3'));
+    await page.close();
+  });
+
+  test('candidature supprimée ailleurs pendant l\'édition', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s2"]');
+    await seed(browser, DATA.filter((c) => c.id !== 's2'));
+    await sleep(500);
+    assert.equal((await panelState(page)).open, false);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Cette candidature a été supprimée/);
+    assert.deepEqual(page.errors, []);
+    await page.close();
+  });
+
+  test('plus aucun alert() ni confirm() dans la popup et le dashboard', () => {
+    for (const file of ['dashboard.js', 'popup.js']) {
+      const src = fs.readFileSync(path.join(__dirname, '..', '..', file), 'utf8');
+      assert.ok(!/\b(alert|confirm)\(/.test(src), `${file} contient alert/confirm`);
+    }
+  });
+
+  test('changement de statut dans la popup visible en direct dans le dashboard', async () => {
+    await seed(browser, DATA);
+    const dash = await openDashboard();
+    await sleep(300);
+    const popup = await openExtPage(browser, extId, 'popup.html', { width: 360, height: 600 });
+    await popup.click('.segmented__item[data-group="progress"]');
+    await popup.click('.job-item[data-id="s3"]');
+    await popup.click('#status-trigger');
+    await popup.click('#status-menu [data-status="offer"]');
+    await sleep(500);
+    assert.ok((await board(dash))[3].ids.includes('s3'), 'carte non déplacée dans « Offre reçue »');
+    await popup.close();
+    await dash.close();
+  });
+});
