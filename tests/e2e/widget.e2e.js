@@ -27,6 +27,18 @@ async function widgetState(p, timeout = 15000) {
   return null;
 }
 
+// Attend que l'état du widget satisfasse la condition (la synchronisation est asynchrone)
+async function waitWidget(p, predicate, timeout = 5000) {
+  const end = Date.now() + timeout;
+  let s = null;
+  while (Date.now() < end) {
+    s = await widgetState(p, 1000);
+    if (s && predicate(s)) return s;
+    await sleep(200);
+  }
+  return s;
+}
+
 before(async () => {
   ({ browser } = await launch());
   jobUrl = await findLinkedInJobUrl(browser);
@@ -82,18 +94,17 @@ test('le widget suit les changements du stockage (ajout, statut, suppression)', 
   assert.match((await widgetState(page)).text, /Suivre cette offre/);
 
   await seed(browser, [{ id: 'x2', url: jobUrl, title: 'Dev', company: 'Acme', status: 'applied', dateApplied: '2026-10-01' }]);
-  await sleep(800);
-  let s = await widgetState(page);
+  let s = await waitWidget(page, (w) => /tag--applied/.test(w.tag || ''));
   assert.match(s.text, /Offre déjà suivie/);
   assert.match(s.tag || '', /tag--applied/);
 
   await seed(browser, [{ id: 'x2', url: jobUrl, title: 'Dev', company: 'Acme', status: 'offer', dateApplied: '2026-10-01' }]);
-  await sleep(800);
-  assert.match((await widgetState(page)).tag || '', /tag--offer/);
+  s = await waitWidget(page, (w) => /tag--offer/.test(w.tag || ''));
+  assert.match(s.tag || '', /tag--offer/);
 
   await seed(browser, []);
-  await sleep(800);
-  assert.match((await widgetState(page)).text, /Suivre cette offre/);
+  s = await waitWidget(page, (w) => /Suivre cette offre/.test(w.text));
+  assert.match(s.text, /Suivre cette offre/);
 });
 
 test('plus aucun alert() dans le script de contenu', () => {
@@ -116,8 +127,7 @@ test('ajout depuis le widget : message de succès puis statut de l\'offre', asyn
     return el && !el.classList.contains('hidden');
   });
   assert.ok(success, 'message de succès absent');
-  await sleep(2500);
-  const s = await widgetState(page);
+  const s = await waitWidget(page, (w) => /Offre déjà suivie/.test(w.text), 6000);
   assert.match(s.text, /Offre déjà suivie/);
   assert.match(s.tag || '', /tag--applied/);
 });
