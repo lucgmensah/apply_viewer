@@ -1,4 +1,4 @@
-# Rappels et notifications — Apply View
+# Rappels et notifications - Apply View
 
 - **Date** : 2026-10-09
 - **Statut** : validé en discussion, en attente de relecture
@@ -47,7 +47,7 @@ Fonctions pures, testées unitairement. `shared.js` et `ui.js` utilisent `global
 
 `background.js` charge `shared.js` et `ui.js` via `importScripts`.
 
-### Planification — `scheduleReminders()`
+### Planification - `scheduleReminders()`
 
 Elle est appelée dans quatre cas :
 - `chrome.runtime.onStartup` ;
@@ -59,7 +59,7 @@ Son déroulement :
 1. Lire la liste. Si `dueReminders(list, now)` n'est pas vide, appeler `fireDueReminders()`. L'écriture qui en résulte relance la planification.
 2. Sinon, `chrome.alarms.clear('next-reminder')` puis, si `nextReminderTime` n'est pas `null`, `chrome.alarms.create('next-reminder', { when })`.
 
-### Notification — `fireDueReminders()`
+### Notification - `fireDueReminders()`
 
 1. Pour chaque candidature échue, appeler `chrome.notifications.create('reminder:<id>:<reminderAt>', …)` avec :
    - `type: 'basic'`, `iconUrl: 'images/icon-128.png'`, `priority: 2` ;
@@ -104,7 +104,7 @@ Ajout des permissions `alarms` et `notifications`.
 - **Panneau** : section « Rappel » sous « Statut », avec le composant commun. Elle est enregistrée avec le bouton Enregistrer et passe par la fusion des seuls champs modifiés : un rappel changé ailleurs n'est pas écrasé.
 - **Carte du Kanban** : tag `.tag--reminder` « ⏰ 10 oct. 09:00 » dans le pied de carte si un rappel existe.
 
-### Popup — Détail
+### Popup - Détail
 
 - Ligne « Rappel » : la date lisible, ou « Aucun ». C'est un bouton qui déplie le composant commun.
 - Chaque choix (pastille ou date validée) est enregistré immédiatement via `JobTracker.update`, avec le toast « Rappel programmé » ou « Rappel retiré ».

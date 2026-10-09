@@ -197,7 +197,7 @@ function renderBanner() {
     return;
   }
   const tracked = trackedOffer();
-  const label = [state.detected.title, state.detected.company].filter(Boolean).join(' — ');
+  const label = [state.detected.title, state.detected.company].filter(Boolean).join(' - ');
   banner.className = 'banner';
   banner.innerHTML = tracked
     ? `<div class="banner__text">

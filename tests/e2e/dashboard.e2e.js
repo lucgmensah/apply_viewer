@@ -42,7 +42,7 @@ async function dragTo(page, id, status) {
   }, id, status);
 }
 
-describe('Dashboard — statistiques et Kanban', () => {
+describe('Dashboard - statistiques et Kanban', () => {
   test('statistiques', async () => {
     await seed(browser, DATA);
     const page = await openDashboard();
@@ -57,7 +57,7 @@ describe('Dashboard — statistiques et Kanban', () => {
     await seed(browser, []);
     const page = await openDashboard();
     await sleep(300);
-    assert.deepEqual(await stats(page), { total: '0', sent: '0', interview: '0', offer: '0', rate: '—' });
+    assert.deepEqual(await stats(page), { total: '0', sent: '0', interview: '0', offer: '0', rate: '-' });
     await shot(page, 'dashboard-empty');
     await page.close();
   });
@@ -160,7 +160,7 @@ const panelState = (page) => page.evaluate(() => {
   };
 });
 
-describe('Dashboard — panneau de détail', () => {
+describe('Dashboard - panneau de détail', () => {
   before(async () => seed(browser, DATA));
 
   test('clic sur une carte : panneau pré-rempli et hash', async () => {
@@ -304,7 +304,7 @@ async function openAndDelete(page, id) {
   await sleep(300);
 }
 
-describe('Dashboard — suppression et cas concurrents', () => {
+describe('Dashboard - suppression et cas concurrents', () => {
   test('supprimer puis annuler réinsère à la position d\'origine', async () => {
     await seed(browser, DATA);
     const page = await openDashboard();
@@ -371,7 +371,7 @@ describe('Dashboard — suppression et cas concurrents', () => {
 });
 
 // --- Relecture finale ---
-describe('Dashboard — corrections de la relecture', () => {
+describe('Dashboard - corrections de la relecture', () => {
   test('le panneau ne réécrase pas un statut modifié ailleurs', async () => {
     await seed(browser, DATA);
     const page = await openDashboard();
@@ -414,7 +414,7 @@ describe('Dashboard — corrections de la relecture', () => {
 // --- Rappels ---
 const JT = (() => { global.window = global; require(path.join(__dirname, '..', '..', 'shared.js')); return globalThis.JobTracker; })();
 
-describe('Dashboard — rappels', () => {
+describe('Dashboard - rappels', () => {
   test('pastille « Demain 9 h » puis Enregistrer : stockage et tag sur la carte', async () => {
     await seed(browser, DATA);
     const page = await openDashboard();
@@ -471,7 +471,7 @@ describe('Dashboard — rappels', () => {
   });
 });
 
-describe('Dashboard — saisie clavier du rappel (relecture)', () => {
+describe('Dashboard - saisie clavier du rappel (relecture)', () => {
   test('un champ de rappel incomplet est refusé au lieu de retirer le rappel', async () => {
     const existing = JT.reminderPresets(new Date()).in3days;
     await seed(browser, DATA.map((c) => (c.id === 's1' ? { ...c, reminderAt: existing } : c)));

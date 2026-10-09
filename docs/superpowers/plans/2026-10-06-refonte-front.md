@@ -1,4 +1,4 @@
-# Refonte du front — Plan d'implémentation
+# Refonte du front - Plan d'implémentation
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -20,7 +20,7 @@
 ## Global Constraints
 
 - **Aucune dépendance runtime ni étape de build** : l'extension se charge depuis la racine du dépôt. `package.json` ne sert qu'aux tests.
-- **Interface en français.** Nom affiché « Apply View » ; manifest `"name": "Apply View — Bêta"`.
+- **Interface en français.** Nom affiché « Apply View » ; manifest `"name": "Apply View - Bêta"`.
 - **Couleurs** :
   - fond `#F7F7FB`, surface `#FFFFFF`, bordure `#ECECF3` ;
   - texte `#1B1B3A`, texte secondaire `#8A8AA3` ;
@@ -66,7 +66,7 @@
 
 ---
 
-## Sous-projet 1 — Système de design + widget
+## Sous-projet 1 - Système de design + widget
 
 ### Task 1 : Infrastructure de tests, `findDuplicate`, ouverture du dashboard sur un `id`
 
@@ -157,7 +157,7 @@
 - [ ] **Step 6 :** `npm run e2e` → PASS. Examiner `screenshots/styleguide.png` à l'œil et le comparer à la maquette (cartes, onglets, tags).
 - [ ] **Step 7 : Commit** : `feat(design): tokens indigo, Plus Jakarta Sans et composants partagés`. La suppression d'Outfit se fait dans le commit de la tâche 8, quand plus aucun fichier ne la référence (`grep -r outfit` vide).
 
-### Task 3 : `ui.js` — statuts, rendus, statistiques, toast
+### Task 3 : `ui.js` - statuts, rendus, statistiques, toast
 
 **Files :**
 - Create : `ui.js`, `tests/unit/ui.test.js`
@@ -244,7 +244,7 @@
   - Panneau : `.card` avec en-tête `.logo-dot` + « Apply View », champs `.input`, bouton `.btn--primary` « Ajouter au suivi ».
   - `refreshWidget` utilise `findDuplicate` et passe la candidature à `injectAlreadyTrackedWidget(candidature)`, qui affiche « Offre déjà suivie » + `UI.statusTag(candidature.status)` et envoie `{ action: 'openDashboard', id: candidature.id }`.
   - `manifest.json` :
-    - `name` : `Apply View — Bêta` ;
+    - `name` : `Apply View - Bêta` ;
     - `description` : « Suivez vos candidatures simplement (Kanban, export CSV). Version bêta. » ;
     - ajouter `ui.js` aux `content_scripts` ;
     - WAR : `tokens.css`, `components.css`, `widget.css` et la nouvelle police.
@@ -253,7 +253,7 @@
 
 ---
 
-## Sous-projet 2 — Popup
+## Sous-projet 2 - Popup
 
 ### Task 5 : Coque de la popup et vue Liste
 
@@ -366,7 +366,7 @@
 
 ---
 
-## Sous-projet 3 — Dashboard
+## Sous-projet 3 - Dashboard
 
 ### Task 8 : Coque du dashboard, statistiques et Kanban
 
@@ -385,7 +385,7 @@
 
 - [ ] **Step 1 : Tests e2e** (données `SAMPLE` + `LONG_TITLE` + `XSS_TITLE`) :
   - les stats affichent Total 10, Envoyées, Entretiens et Offres conformes à `UI.computeStats`, et un taux en « N % » ;
-  - avec un stockage vide : 0 partout et un taux « — » ;
+  - avec un stockage vide : 0 partout et un taux « - » ;
   - 5 colonnes dans l'ordre des statuts, avec des compteurs cohérents ;
   - le statut inconnu est affiché dans « À postuler » ;
   - la carte `XSS_TITLE` affiche le texte, et `window.__xss` reste `undefined` ;

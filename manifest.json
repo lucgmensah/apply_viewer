@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Apply View — Bêta",
+  "name": "Apply View - Bêta",
   "version": "1.0.0",
   "description": "Suivez vos candidatures simplement (Kanban, export CSV). Version bêta.",
   "permissions": [

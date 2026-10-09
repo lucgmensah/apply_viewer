@@ -1,4 +1,4 @@
-# Refonte du front — Apply View
+# Refonte du front - Apply View
 
 - **Date** : 2026-10-06
 - **Statut** : validé en discussion, en attente de relecture
@@ -48,7 +48,7 @@ Vanilla JS et CSS, sans dépendance, chargés directement par l'extension :
 
 `ui.js` produit du HTML échappé via `JobTracker.escapeHTML`. Toute donnée utilisateur passe par l'échappement ou par `textContent`.
 
-## 4. Sous-projet 1 — Système de design + widget
+## 4. Sous-projet 1 - Système de design + widget
 
 ### Tokens
 
@@ -90,9 +90,9 @@ Vanilla JS et CSS, sans dépendance, chargés directement par l'extension :
 
 ### Nom
 
-« Apply View » partout : titres de la popup et du dashboard, widget, `manifest.json` (« Apply View — Bêta »).
+« Apply View » partout : titres de la popup et du dashboard, widget, `manifest.json` (« Apply View - Bêta »).
 
-## 5. Sous-projet 2 — Popup
+## 5. Sous-projet 2 - Popup
 
 360 px de large. En-tête : pastille logo + « Apply View », puis deux boutons ronds : **+** (ajout manuel) et **↗** (ouvrir le dashboard).
 
@@ -101,7 +101,7 @@ Trois vues, gérées par un état local `view = 'list' | 'detail' | 'add'` et `s
 ### Vue Liste (par défaut)
 
 - **Bandeau offre**, calculé à partir de la réponse du script de contenu (scraping existant) :
-  - `success` et non suivie : carte « Poste — Entreprise » + bouton **Ajouter cette offre**, qui ouvre la vue Ajout pré-remplie ;
+  - `success` et non suivie : carte « Poste - Entreprise » + bouton **Ajouter cette offre**, qui ouvre la vue Ajout pré-remplie ;
   - `success` et déjà suivie : « Déjà suivie » + tag de statut ; le clic ouvre le Détail ;
   - sinon : aucun bandeau.
 - **Onglets segmentés**, avec compteurs :
@@ -135,7 +135,7 @@ Trois vues, gérées par un état local `view = 'list' | 'detail' | 'add'` et `s
 
 - `JobTracker.getAll` au chargement, `JobTracker.onChange` pour rester à jour, `JobTracker.update` pour toute écriture.
 
-## 6. Sous-projet 3 — Dashboard
+## 6. Sous-projet 3 - Dashboard
 
 ### En-tête
 
@@ -154,7 +154,7 @@ Une rangée de 5 cartes informatives, non cliquables. Chacune a une icône, un g
 | Envoyées | statut ≠ `wishlist` |
 | Entretiens | `interview` |
 | Offres | `offer` |
-| Taux de réponse | (`interview` + `offer` + `rejected`) ÷ Envoyées, arrondi à l'entier ; « — » si Envoyées = 0 |
+| Taux de réponse | (`interview` + `offer` + `rejected`) ÷ Envoyées, arrondi à l'entier ; « - » si Envoyées = 0 |
 
 Le taux de réponse est une approximation : sans historique, on considère qu'un statut au-delà de « envoyée » signifie qu'une réponse a été reçue. Une info-bulle le précise.
 
@@ -189,7 +189,7 @@ Remplacent tous les `alert()` / `confirm()` :
 
 ## 7. Cas limites et erreurs
 
-- Stockage vide : états vides dans la popup et le Kanban, statistiques à 0, taux « — ».
+- Stockage vide : états vides dans la popup et le Kanban, statistiques à 0, taux « - ».
 - Candidature supprimée dans un autre contexte pendant qu'elle est ouverte (popup Détail ou panneau) : retour à la liste ou fermeture, avec un toast « Cette candidature a été supprimée ».
 - Statut inconnu dans les données : traité comme `wishlist` à l'affichage, sans réécriture.
 - `dateApplied` vide ou invalide : pas de temps relatif ; tri en fin de liste.

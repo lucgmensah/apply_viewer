@@ -23,11 +23,11 @@ const listState = (page) => page.evaluate(() => ({
 
 const clickGroup = (page, group) => page.click(`.segmented__item[data-group="${group}"]`);
 
-describe('Popup — vue Liste', () => {
+describe('Popup - vue Liste', () => {
   test('onglet par défaut « En cours », compteurs et tri', async () => {
     await seed(browser, DATA);
     const page = await openPopup();
-    await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+    await page.evaluate(() => { try { localStorage.clear(); } catch (e) { } });
     await page.reload({ waitUntil: 'load' });
     await sleep(300);
     const s = await listState(page);
@@ -122,7 +122,7 @@ async function waitFor(page, fn, timeout = 15000) {
   await page.waitForFunction(fn, { timeout });
 }
 
-describe('Popup — bandeau et ajout', () => {
+describe('Popup - bandeau et ajout', () => {
   let jobUrl, jobTabId;
 
   before(async () => {
@@ -209,7 +209,7 @@ const todayLocal = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-describe('Popup — vue Détail', () => {
+describe('Popup - vue Détail', () => {
   before(async () => seed(browser, SAMPLE));
 
   test('affiche les lignes renseignées, liens et notes', async () => {
@@ -301,7 +301,7 @@ describe('Popup — vue Détail', () => {
 });
 
 // --- Relecture finale ---
-describe('Popup — corrections de la relecture', () => {
+describe('Popup - corrections de la relecture', () => {
   test('des chaînes longues sans espace ne font pas déborder le détail', async () => {
     const longWord = 'https://exemple.fr/offres/' + 'a'.repeat(200);
     await seed(browser, [{ ...base, id: 'w', title: 'Intitulé' + 'x'.repeat(120), company: 'Société' + 'y'.repeat(120), status: 'applied', dateApplied: '2026-10-01', notes: longWord }]);
@@ -318,7 +318,7 @@ describe('Popup — corrections de la relecture', () => {
 });
 
 // --- Régression : pré-remplissage du formulaire « + » avec la page ouverte ---
-describe('Popup — pré-remplissage depuis la page ouverte', () => {
+describe('Popup - pré-remplissage depuis la page ouverte', () => {
   test('« + » sur une offre détectée reprend ses informations', async () => {
     await seed(browser, []);
     const jobUrl = await findLinkedInJobUrl(browser);
@@ -351,7 +351,7 @@ describe('Popup — pré-remplissage depuis la page ouverte', () => {
 // --- Rappels ---
 const JT = (() => { global.window = global; require('node:path'); require(require('node:path').join(__dirname, '..', '..', 'shared.js')); return globalThis.JobTracker; })();
 
-describe('Popup — rappel dans le détail', () => {
+describe('Popup - rappel dans le détail', () => {
   test('ligne « Aucun », raccourci, puis retrait', async () => {
     await seed(browser, SAMPLE);
     const page = await openDetail('progress', 's1');
@@ -389,7 +389,7 @@ describe('Popup — rappel dans le détail', () => {
   });
 });
 
-describe('Popup — rappel à l\'ajout', () => {
+describe('Popup - rappel à l\'ajout', () => {
   test('« Me rappeler : Demain 9 h » enregistre le rappel ; par défaut aucun', async () => {
     await seed(browser, []);
     const page = await openPopup();
@@ -415,7 +415,7 @@ describe('Popup — rappel à l\'ajout', () => {
   });
 });
 
-describe('Popup — saisie clavier du rappel (relecture)', () => {
+describe('Popup - saisie clavier du rappel (relecture)', () => {
   test('effacer un segment au clavier ne supprime pas le rappel ; « OK » enregistre la saisie', async () => {
     const existing = JT.reminderPresets(new Date()).in3days;
     await seed(browser, SAMPLE.map((c) => (c.id === 's1' ? { ...c, reminderAt: existing } : c)));

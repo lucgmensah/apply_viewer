@@ -62,8 +62,10 @@ function renderStats() {
     { id: 'sent', label: 'Envoyées', value: s.sent },
     { id: 'interview', label: 'Entretiens', value: s.interview },
     { id: 'offer', label: 'Offres', value: s.offer },
-    { id: 'rate', label: 'Taux de réponse', value: s.responseRate === null ? '—' : `${s.responseRate} %`,
-      title: 'Estimation : candidatures ayant dépassé le statut "envoyée"' }
+    {
+      id: 'rate', label: 'Taux de réponse', value: s.responseRate === null ? '-' : `${s.responseRate} %`,
+      title: 'Estimation : candidatures ayant dépassé le statut "envoyée"'
+    }
   ];
   $('.stats').innerHTML = cards.map((c) => `
     <div class="card stat-card" data-stat="${c.id}"${c.title ? ` title="${esc(c.title)}"` : ''}>
@@ -90,7 +92,7 @@ function reminderTagHTML(value) {
 function cardHTML(c) {
   const meta = [c.location, UI.relativeTime(c.dateApplied)].filter(Boolean).map(esc).join(' · ');
   return `
-    <article class="kanban-card" data-id="${esc(c.id)}" draggable="true" tabindex="0" aria-label="${esc(c.title)} — ${esc(c.company)}">
+    <article class="kanban-card" data-id="${esc(c.id)}" draggable="true" tabindex="0" aria-label="${esc(c.title)} - ${esc(c.company)}">
       <div class="kanban-card__title">${esc(c.title)}</div>
       <div class="kanban-card__company">${esc(c.company)}</div>
       <div class="kanban-card__footer">
@@ -209,7 +211,7 @@ const panelEls = () => ({ panel: $('.panel'), backdrop: $('.panel-backdrop') });
 
 function setupPanel() {
   $('#f-reminder').innerHTML = UI.reminderFieldHTML('f-reminder', '');
-  UI.bindReminderField($('#f-reminder'), 'f-reminder', () => {});
+  UI.bindReminderField($('#f-reminder'), 'f-reminder', () => { });
   $('.status-group').innerHTML = UI.STATUSES.map((s) => `
     <label class="status-option">
       <input type="radio" name="status" value="${s.id}">

@@ -1,61 +1,95 @@
-# Apply View 💼✨
+# Apply View
 
-**Apply View** is a sleek, minimalist, and open-source Chrome Extension designed to help you track your job applications with style. 
+Extension Chrome open source pour suivre ses candidatures : enregistrement d'offres en un clic, tableau Kanban, rappels avec notifications et export CSV. Les données restent dans le navigateur.
 
-Built with the modern **Crextio** design language, it offers a warm, low-contrast, and distraction-free Kanban board with frosted glass elements and fluid drag-and-drop interactions to organize your job search.
+> Version bêta. Présentation destinée aux utilisateurs : [docs.md](docs.md).
 
----
+## Fonctionnalités
 
-## 🎨 Key Features
+- **Détection des offres** sur LinkedIn, Indeed et Welcome to the Jungle :
+  - un bouton flottant « Suivre cette offre » apparaît sur la page, avec poste, entreprise et lieu pré-remplis ;
+  - la détection fonctionne aussi pendant la navigation interne de ces sites ;
+  - sur une offre déjà suivie, le bouton affiche son statut actuel.
+- **Popup** (icône de l'extension) :
+  - liste des candidatures par avancement (À faire, En cours, Terminées) ;
+  - fiche détaillée avec changement de statut et rappel ;
+  - ajout pré-rempli depuis la page ouverte, sur n'importe quel site.
+- **Tableau de bord** :
+  - statistiques (dont un taux de réponse estimé) ;
+  - Kanban en cinq colonnes avec glisser-déposer ;
+  - panneau de détail modifiable ;
+  - suppression annulable ;
+  - recherche ;
+  - export CSV compatible Excel.
+- **Rappels** : date et heure sur n'importe quelle candidature, notification du navigateur à l'heure prévue (ou au démarrage suivant si le navigateur était fermé), avec les actions « Ouvrir l'offre » et « Reporter à demain ».
+- **Détection des doublons** : une même offre n'est enregistrée qu'une fois, même ouverte depuis des URL différentes (paramètres de suivi, page de recherche ou page d'offre).
 
-*   **⚡ One-Click Job Saving:** The Chrome extension detects active job listings on popular job boards (LinkedIn, Indeed, etc.) and auto-fills details for instant saving.
-*   **📋 Frosted Glass Kanban Board:** A beautiful dashboard utilizing a warm sand-to-glow gradient background, with highly rounded cards and custom progress pill badges.
-*   **📁 Deep Application Details:** Keep track of contact emails, phone numbers, interview histories, salaries, and notes inside a sleek dark charcoal details sidebar.
-*   **📊 Direct CSV Export:** Export your entire job board into an Excel-friendly CSV with one click.
-*   **🔒 Local First:** Your data remains securely in your browser's local storage—no external databases required.
+## Installation
 
----
+L'extension n'a ni dépendance ni étape de build : elle se charge directement depuis le dépôt.
 
-## 🛠️ Installation & Setup
+1. Cloner le dépôt :
+   ```bash
+   git clone https://github.com/lucgmensah/apply_viewer.git
+   ```
+2. Ouvrir `chrome://extensions` et activer le **mode développeur** (en haut à droite).
+3. Cliquer sur **« Charger l'extension non empaquetée »** et choisir le dossier du dépôt (celui qui contient `manifest.json`).
 
-Since **Apply View** is an open-source project, you can load and run it locally in developer mode:
+Après une mise à jour du code, cliquer sur ↻ sur la carte de l'extension, puis **recharger les onglets déjà ouverts** sur LinkedIn, Indeed ou Welcome to the Jungle.
 
-1.  **Clone or Download this Repository:**
-    ```bash
-    git clone https://github.com/[username]/apply-view.git
-    ```
-    *(Or download and extract the ZIP file directly from GitHub)*.
+## Données et permissions
 
-2.  **Open Chrome Extensions Page:**
-    In your Chrome browser address bar, navigate to:
-    `chrome://extensions/`
+Les candidatures sont stockées dans `chrome.storage.local`, sous la clé `candidatures`. Rien n'est envoyé à un serveur, et les polices sont embarquées : aucun appel externe.
 
-3.  **Enable Developer Mode:**
-    Toggle the **Developer Mode** switch in the top-right corner to **ON**.
+| Permission | Utilisation |
+|---|---|
+| `storage` | Enregistrer les candidatures |
+| `activeTab`, `scripting` | Lire l'offre de l'onglet courant depuis la popup |
+| `alarms` | Programmer le prochain rappel |
+| `notifications` | Afficher les rappels |
 
-4.  **Load the Extension:**
-    *   Click the **Load unpacked** (Charger l'extension non emballée) button in the top-left.
-    *   Select the root directory containing the cloned repository (where `manifest.json` is located).
+Le script de contenu s'exécute sur `*.linkedin.com`, `*.indeed.com` et `*.welcometothejungle.com`. Il couvre tout le site, et pas seulement les pages d'offres, pour suivre la navigation interne de ces sites.
 
-5.  **Start Tracking:**
-    Click on the extension icon in your toolbar to save a job, or open the dashboard directly!
+## Structure du projet
 
----
+| Fichier | Rôle |
+|---|---|
+| `manifest.json` | Déclaration de l'extension (Manifest V3) |
+| `shared.js` | Couche données partagée (`JobTracker`) : stockage, doublons, clés d'offres, calcul des rappels |
+| `ui.js` | Rendus partagés (`UI`) : statuts, cartes, statistiques, toasts, composant « Rappel » |
+| `tokens.css`, `components.css` | Système de design (couleurs, police, composants) |
+| `background.js` | Service worker : ouverture du dashboard, planification des rappels, notifications |
+| `content.js`, `widget.css` | Script de contenu : détection des offres et bouton flottant (Shadow DOM) |
+| `popup.html/.css/.js` | Popup : liste, détail, ajout |
+| `dashboard.html/.css/.js` | Tableau de bord : statistiques, Kanban, panneau de détail, export CSV |
+| `fonts/` | Police Plus Jakarta Sans (licence OFL) |
+| `docs/superpowers/` | Specs et plans d'implémentation |
 
-## 🤝 Contributing
+## Tests
 
-This project is completely **open-source** and we love community contributions! Whether you're fixing a bug, suggesting a feature, or designing new elements:
+Les tests utilisent Node.js 22 et Puppeteer (dépendance de développement uniquement).
 
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4.  Push to the branch (`git push origin feature/AmazingFeature`).
-5.  Open a **Pull Request**.
+```bash
+npm install
+npm test        # tests unitaires (node:test)
+npm run e2e     # tests de bout en bout : Chrome for Testing avec l'extension chargée
+```
 
-Feel free to open an **Issue** to discuss features or report bugs.
+Certains tests de bout en bout ouvrent de vraies offres LinkedIn sans connexion. Ils ont besoin d'un accès réseau et peuvent échouer ponctuellement si LinkedIn redirige vers sa page de connexion. Relancer suffit en général. Les captures d'écran générées sont dans `tests/e2e/screenshots/` (ignoré par Git).
 
----
+## Publier sur le Chrome Web Store
 
-## 📄 License
+Pour l'archive à publier, ne garder que les fichiers de l'extension. Il faut exclure `node_modules/`, `tests/`, `docs/`, `docs.md`, `package.json`, `package-lock.json` et `readme.md`.
 
-This project is licensed under the MIT License. Feel free to use, modify, and distribute it.
+## Contribuer
+
+1. Forker le dépôt et créer une branche (`git checkout -b feat/ma-fonctionnalite`).
+2. Garder l'extension sans dépendance ni build : JavaScript et CSS natifs, réutilisation de `shared.js`, `ui.js` et des composants existants.
+3. Ajouter les tests correspondants et vérifier que `npm test` et `npm run e2e` passent.
+4. Ouvrir une Pull Request vers `main`.
+
+Les bugs et idées sont les bienvenus dans les Issues.
+
+## Licence
+
+Code sous licence MIT. La police Plus Jakarta Sans est distribuée sous licence SIL Open Font License 1.1 (voir `fonts/OFL-PlusJakartaSans.txt`).

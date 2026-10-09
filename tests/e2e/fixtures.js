@@ -14,7 +14,7 @@ const SAMPLE = [
   { ...base, id: 's8', title: 'Ancien statut', company: 'Legacy', status: 'archived', dateApplied: '2026-07-01' }
 ];
 
-const LONG_TITLE = 'Développeur Full-Stack Senior JavaScript TypeScript React Node.js spécialisé en architecture distribuée et en performance web (H/F) — CDI Paris';
+const LONG_TITLE = 'Développeur Full-Stack Senior JavaScript TypeScript React Node.js spécialisé en architecture distribuée et en performance web (H/F) - CDI Paris';
 
 const XSS_TITLE = '<img src=x onerror="window.__xss=1">Dev';
 
