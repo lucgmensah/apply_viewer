@@ -1,6 +1,6 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { launch, seed, shot, findLinkedInJobUrl, waitForTab, sleep } = require('./harness');
+const { launch, seed, readStore, shot, findLinkedInJobUrl, waitForTab, sleep } = require('./harness');
 
 let browser, jobUrl, page;
 
@@ -130,4 +130,22 @@ test('ajout depuis le widget : message de succès puis statut de l\'offre', asyn
   const s = await waitWidget(page, (w) => /Offre déjà suivie/.test(w.text), 6000);
   assert.match(s.text, /Offre déjà suivie/);
   assert.match(s.tag || '', /tag--applied/);
+});
+
+test('ajout depuis le widget avec rappel « Demain 9 h »', async () => {
+  global.window = global;
+  require(require('node:path').join(__dirname, '..', '..', 'shared.js'));
+  await seed(browser, []);
+  await page.reload({ waitUntil: 'load' });
+  await widgetState(page);
+  await page.evaluate(() => {
+    const root = document.getElementById('job-tracker-floating-root').shadowRoot;
+    root.querySelector('.wt-pill').click();
+    root.getElementById('wt-reminder').value = 'tomorrow';
+    root.querySelector('.wt-form button[type="submit"]').click();
+  });
+  await sleep(600);
+  const store = await readStore(browser);
+  assert.equal(store.length, 1);
+  assert.equal(store[0].reminderAt, globalThis.JobTracker.reminderPresets(new Date()).tomorrow);
 });

@@ -416,6 +416,7 @@ function renderAdd() {
       <label class="form-field">Statut<select class="select" id="add-status">${options}</select></label>
       <label class="form-field">Lieu<input class="input" id="add-location" value="${esc(p.location)}" placeholder="Paris, télétravail…"></label>
       <label class="form-field">Lien de l'offre<input class="input" id="add-url" type="url" value="${esc(p.url)}" placeholder="https://…"></label>
+      <label class="form-field">Me rappeler${UI.reminderSelectHTML('add-reminder')}</label>
       <p id="add-error" class="form-error" role="alert"></p>
       <button type="submit" id="add-submit" class="btn btn--primary">Enregistrer</button>
     </form>`;
@@ -441,6 +442,7 @@ function handleAdd(e) {
     status: $('#add-status').value,
     location: $('#add-location').value.trim(),
     url: $('#add-url').value.trim(),
+    reminderAt: UI.reminderFromPreset($('#add-reminder').value),
     notes: "Ajouté depuis la popup de l'extension."
   });
 

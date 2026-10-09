@@ -144,6 +144,14 @@ var UI = globalThis.UI || (() => {
     input.addEventListener('change', () => onPick(input.value));
   }
 
+  // Liste compacte pour les formulaires d'ajout : '' (pas de rappel) ou un raccourci
+  function reminderSelectHTML(id) {
+    const options = [{ id: '', label: 'Pas de rappel' }, ...REMINDER_PRESETS]
+      .map((p) => `<option value="${p.id}">${esc(p.label)}</option>`)
+      .join('');
+    return `<select class="select" id="${id}">${options}</select>`;
+  }
+
   // Le rappel est-il dans le futur ? ('' est accepté : pas de rappel)
   function isValidFutureReminder(value, now = new Date()) {
     if (!value) return true;
@@ -187,7 +195,7 @@ var UI = globalThis.UI || (() => {
 
   return {
     STATUSES, GROUPS, statusOf, statusTag, relativeTime, sortCandidatures, jobItemHTML, computeStats, toast,
-    REMINDER_PRESETS, formatReminder, formatReminderShort, reminderFromPreset, reminderFieldHTML, bindReminderField, isValidFutureReminder
+    REMINDER_PRESETS, formatReminder, formatReminderShort, reminderFromPreset, reminderFieldHTML, bindReminderField, reminderSelectHTML, isValidFutureReminder
   };
 })();
 globalThis.UI = UI;

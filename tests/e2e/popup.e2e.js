@@ -387,3 +387,29 @@ describe('Popup — rappel dans le détail', () => {
     await page.close();
   });
 });
+
+describe('Popup — rappel à l\'ajout', () => {
+  test('« Me rappeler : Demain 9 h » enregistre le rappel ; par défaut aucun', async () => {
+    await seed(browser, []);
+    const page = await openPopup();
+    await page.click('#btn-add');
+    assert.equal(await page.$eval('#add-reminder', (s) => s.value), '');
+    await page.type('#add-title', 'Dev Rappel');
+    await page.type('#add-company', 'Acme');
+    await page.select('#add-reminder', 'tomorrow');
+    await page.click('#add-submit');
+    await sleep(400);
+
+    await page.click('#detail-back');
+    await page.click('#btn-add');
+    await page.type('#add-title', 'Dev Sans Rappel');
+    await page.type('#add-company', 'Acme');
+    await page.click('#add-submit');
+    await sleep(400);
+
+    const store = await readStore(browser);
+    assert.equal(store.find((c) => c.title === 'Dev Rappel').reminderAt, JT.reminderPresets(new Date()).tomorrow);
+    assert.equal(store.find((c) => c.title === 'Dev Sans Rappel').reminderAt, '');
+    await page.close();
+  });
+});

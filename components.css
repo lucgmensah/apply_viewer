@@ -290,10 +290,12 @@ button.tag { cursor: pointer; }
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 8px 24px rgba(27, 27, 58, 0.18);
-  pointer-events: auto;
+  /* Le message ne doit pas bloquer les clics sur ce qu'il recouvre : seul son bouton est cliquable */
+  pointer-events: none;
   animation: toast-in var(--transition-normal);
 }
 .toast__action {
+  pointer-events: auto;
   padding: 0;
   border: 0;
   background: none;
