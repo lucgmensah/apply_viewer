@@ -381,6 +381,7 @@ describe('Popup — rappel dans le détail', () => {
     await page.click('#reminder-trigger');
     const past = JT.toReminderValue(new Date(Date.now() - 3600000));
     await page.$eval('#d-reminder-input', (i, v) => { i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, past);
+    await page.click('#reminder-save');
     await sleep(300);
     assert.match(await page.$eval('#reminder-error', (e) => e.textContent), /Choisissez une date à venir/);
     assert.equal((await readStore(browser)).find((c) => c.id === 's2').reminderAt || '', '');
@@ -410,6 +411,29 @@ describe('Popup — rappel à l\'ajout', () => {
     const store = await readStore(browser);
     assert.equal(store.find((c) => c.title === 'Dev Rappel').reminderAt, JT.reminderPresets(new Date()).tomorrow);
     assert.equal(store.find((c) => c.title === 'Dev Sans Rappel').reminderAt, '');
+    await page.close();
+  });
+});
+
+describe('Popup — saisie clavier du rappel (relecture)', () => {
+  test('effacer un segment au clavier ne supprime pas le rappel ; « OK » enregistre la saisie', async () => {
+    const existing = JT.reminderPresets(new Date()).in3days;
+    await seed(browser, SAMPLE.map((c) => (c.id === 's1' ? { ...c, reminderAt: existing } : c)));
+    const page = await openDetail('progress', 's1');
+    await page.click('#reminder-trigger');
+    await page.focus('#d-reminder-input');
+    await page.keyboard.press('Backspace');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, existing, 'rappel effacé par une frappe');
+    assert.ok(await page.$('#reminder-editor:not(.hidden)'), 'éditeur refermé pendant la saisie');
+
+    const target = JT.reminderPresets(new Date()).in1week.replace('T09:00', 'T14:30');
+    await page.$eval('#d-reminder-input', (i, v) => { i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, target);
+    await sleep(300);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, existing, 'enregistré sans validation');
+    await page.click('#reminder-save');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, target);
     await page.close();
   });
 });

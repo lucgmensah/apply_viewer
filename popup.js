@@ -304,6 +304,7 @@ function renderDetail() {
         </div>
         <div id="reminder-editor" class="reminder-editor hidden">
           ${UI.reminderFieldHTML('d-reminder', c.reminderAt || '')}
+          <button type="button" id="reminder-save" class="btn btn--primary">OK</button>
           <p id="reminder-error" class="form-error" role="alert"></p>
         </div>
         ${row('date', 'Date', esc(formatDate(c.dateApplied)))}
@@ -331,8 +332,8 @@ function bindReminderEditor(id) {
     trigger.setAttribute('aria-expanded', String(open));
   });
 
-  UI.bindReminderField(editor, 'd-reminder', (value) => {
-    if (!UI.isValidFutureReminder(value)) {
+  const save = (value) => {
+    if (value === null || !UI.isValidFutureReminder(value)) {
       $('#reminder-error').textContent = 'Choisissez une date à venir';
       return;
     }
@@ -341,7 +342,10 @@ function bindReminderEditor(id) {
       render();
       UI.toast(value ? 'Rappel programmé' : 'Rappel retiré');
     });
-  });
+  };
+
+  UI.bindReminderField(editor, 'd-reminder', save);
+  $('#reminder-save').addEventListener('click', () => save(UI.readReminderInput($('#d-reminder-input'))));
 }
 
 function bindStatusMenu(id) {

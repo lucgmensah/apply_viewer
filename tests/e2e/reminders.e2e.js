@@ -113,3 +113,12 @@ describe('Moteur de rappels', () => {
     assert.deepEqual(result.map((c) => c.reminderAt), ['2026-10-12T09:00', '']);
   });
 });
+
+test('« Reporter » sur une ancienne notification ne remplace pas un rappel plus récent', async () => {
+  const newer = J.reminderPresets(new Date()).in1week;
+  await seed(browser, [{ ...base, id: 's6', title: 'Dev', company: 'Acme', status: 'wishlist', url: '', reminderAt: newer }]);
+  const w = await worker(browser);
+  await w.evaluate(() => handleNotificationButton('reminder:s6:2026-10-09T09:00', 0));
+  await sleep(800);
+  assert.equal((await readStore(browser)).find((c) => c.id === 's6').reminderAt, newer);
+});

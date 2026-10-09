@@ -125,7 +125,10 @@ async function handleNotificationButton(notifId, buttonIndex) {
     return;
   }
   const snoozed = JobTracker.snoozeValue(parsed.reminderAt, new Date());
-  JobTracker.update((list) => list.map((x) => (x.id === c.id ? { ...x, reminderAt: snoozed } : x)));
+  // Ne pas écraser un rappel posé depuis la notification (seulement s'il a été retiré ou est inchangé)
+  JobTracker.update((list) => list.map((x) => (
+    x.id === c.id && (x.reminderAt === '' || x.reminderAt === parsed.reminderAt) ? { ...x, reminderAt: snoozed } : x
+  )));
 }
 
 chrome.notifications.onClicked.addListener(handleNotificationClick);

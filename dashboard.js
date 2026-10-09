@@ -340,7 +340,8 @@ function savePanel() {
   }
 
   // Rappel : seulement s'il a été modifié, et dans le futur
-  if (fields.reminderAt !== state.panelSnapshot.reminderAt && !UI.isValidFutureReminder(fields.reminderAt)) {
+  const reminderIncomplete = UI.readReminderInput(document.getElementById(FIELDS.reminderAt)) === null;
+  if (reminderIncomplete || (fields.reminderAt !== state.panelSnapshot.reminderAt && !UI.isValidFutureReminder(fields.reminderAt))) {
     document.getElementById(FIELDS.reminderAt).focus();
     UI.toast('Choisissez une date à venir');
     return;

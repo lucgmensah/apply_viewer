@@ -132,7 +132,9 @@ var UI = globalThis.UI || (() => {
     </div>`;
   }
 
-  // Les pastilles remplissent le champ ; chaque choix est transmis à onPick(valeur)
+  // Les pastilles remplissent le champ et transmettent leur valeur à onPick.
+  // La saisie au clavier n'est pas transmise : chaque frappe produirait une valeur
+  // intermédiaire (ou vide). Elle est validée par l'appelant (bouton OK, Enregistrer).
   function bindReminderField(root, idPrefix, onPick) {
     const input = root.querySelector(`#${idPrefix}-input`);
     root.querySelectorAll('.reminder-field .chip').forEach((chip) => {
@@ -141,7 +143,6 @@ var UI = globalThis.UI || (() => {
         onPick(input.value);
       });
     });
-    input.addEventListener('change', () => onPick(input.value));
   }
 
   // Liste compacte pour les formulaires d'ajout : '' (pas de rappel) ou un raccourci
@@ -150,6 +151,11 @@ var UI = globalThis.UI || (() => {
       .map((p) => `<option value="${p.id}">${esc(p.label)}</option>`)
       .join('');
     return `<select class="select" id="${id}">${options}</select>`;
+  }
+
+  // Valeur saisie, ou null si le champ est incomplet (segment effacé au clavier)
+  function readReminderInput(input) {
+    return input.validity && input.validity.badInput ? null : input.value;
   }
 
   // Le rappel est-il dans le futur ? ('' est accepté : pas de rappel)
@@ -195,7 +201,7 @@ var UI = globalThis.UI || (() => {
 
   return {
     STATUSES, GROUPS, statusOf, statusTag, relativeTime, sortCandidatures, jobItemHTML, computeStats, toast,
-    REMINDER_PRESETS, formatReminder, formatReminderShort, reminderFromPreset, reminderFieldHTML, bindReminderField, reminderSelectHTML, isValidFutureReminder
+    REMINDER_PRESETS, formatReminder, formatReminderShort, reminderFromPreset, reminderFieldHTML, bindReminderField, reminderSelectHTML, readReminderInput, isValidFutureReminder
   };
 })();
 globalThis.UI = UI;

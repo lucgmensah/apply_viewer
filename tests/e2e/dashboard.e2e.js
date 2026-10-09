@@ -470,3 +470,20 @@ describe('Dashboard — rappels', () => {
     await page.close();
   });
 });
+
+describe('Dashboard — saisie clavier du rappel (relecture)', () => {
+  test('un champ de rappel incomplet est refusé au lieu de retirer le rappel', async () => {
+    const existing = JT.reminderPresets(new Date()).in3days;
+    await seed(browser, DATA.map((c) => (c.id === 's1' ? { ...c, reminderAt: existing } : c)));
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s1"]');
+    await page.focus('#f-reminder-input');
+    await page.keyboard.press('Backspace');
+    await page.click('#panel-save');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, existing);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Choisissez une date à venir/);
+    await page.close();
+  });
+});
