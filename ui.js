@@ -1,7 +1,7 @@
 // --- RENDUS PARTAGÉS (POPUP, DASHBOARD, WIDGET) ---
 // Dépend de shared.js (JobTracker.escapeHTML). Déclaré avec `var` pour
 // supporter la réinjection du script de contenu, comme shared.js.
-var UI = window.UI || (() => {
+var UI = globalThis.UI || (() => {
   const esc = (s) => JobTracker.escapeHTML(s);
 
   // Ordre des colonnes du Kanban et des menus. `group` = onglet de la popup.
@@ -130,4 +130,4 @@ var UI = window.UI || (() => {
 
   return { STATUSES, GROUPS, statusOf, statusTag, relativeTime, sortCandidatures, jobItemHTML, computeStats, toast };
 })();
-window.UI = UI;
+globalThis.UI = UI;
