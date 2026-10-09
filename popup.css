@@ -95,3 +95,17 @@ body {
   cursor: pointer;
 }
 .status-menu [role="menuitem"]:hover, .status-menu [role="menuitem"]:focus-visible { background: var(--color-bg); }
+
+/* --- RAPPEL --- */
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+.reminder-editor { padding: var(--space-2) 0 var(--space-3); border-bottom: 1px dashed var(--color-border); margin-bottom: var(--space-1); }
+.reminder-editor .form-error { margin-top: var(--space-2); }

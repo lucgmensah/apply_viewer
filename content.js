@@ -342,6 +342,10 @@
               <input class="input" type="text" id="wt-location" value="${esc(details.location)}">
             </div>
           </div>
+          <div class="wt-field">
+            <label class="wt-label" for="wt-reminder">Me rappeler</label>
+            ${UI.reminderSelectHTML('wt-reminder')}
+          </div>
           <button type="submit" class="btn btn--primary">Ajouter au suivi</button>
         </form>
       </div>
@@ -374,6 +378,7 @@
         company: shadow.getElementById('wt-company').value.trim(),
         status: shadow.getElementById('wt-status').value,
         location: shadow.getElementById('wt-location').value.trim(),
+        reminderAt: UI.reminderFromPreset(shadow.getElementById('wt-reminder').value),
         url: details.url,
         notes: 'Ajouté automatiquement depuis l\'offre en ligne via le widget.'
       });

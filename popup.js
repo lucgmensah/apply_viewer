@@ -296,6 +296,17 @@ function renderDetail() {
             <div id="status-menu" class="status-menu hidden" role="menu" aria-label="Choisir un statut">${menu}</div>
           </span>
         </div>
+        <div class="field-row" data-field="reminder">
+          <span class="field-row__label">Rappel</span>
+          <span class="field-row__value">
+            <button type="button" id="reminder-trigger" class="link-btn" aria-expanded="false" aria-controls="reminder-editor">${esc(UI.formatReminder(c.reminderAt) || 'Aucun')}</button>
+          </span>
+        </div>
+        <div id="reminder-editor" class="reminder-editor hidden">
+          ${UI.reminderFieldHTML('d-reminder', c.reminderAt || '')}
+          <button type="button" id="reminder-save" class="btn btn--primary">OK</button>
+          <p id="reminder-error" class="form-error" role="alert"></p>
+        </div>
         ${row('date', 'Date', esc(formatDate(c.dateApplied)))}
         ${row('location', 'Lieu', esc(c.location))}
         ${row('salary', 'Salaire', esc(c.salary))}
@@ -309,6 +320,32 @@ function renderDetail() {
   $('#detail-back').addEventListener('click', () => go('list'));
   $('#detail-edit').addEventListener('click', () => openDashboard(c.id));
   bindStatusMenu(c.id);
+  bindReminderEditor(c.id);
+}
+
+// Rappel : chaque choix est enregistré immédiatement, comme le statut
+function bindReminderEditor(id) {
+  const trigger = $('#reminder-trigger');
+  const editor = $('#reminder-editor');
+  trigger.addEventListener('click', () => {
+    const open = editor.classList.toggle('hidden') === false;
+    trigger.setAttribute('aria-expanded', String(open));
+  });
+
+  const save = (value) => {
+    if (value === null || !UI.isValidFutureReminder(value)) {
+      $('#reminder-error').textContent = 'Choisissez une date à venir';
+      return;
+    }
+    JobTracker.update((list) => list.map((c) => (c.id === id ? { ...c, reminderAt: value } : c)), (saved, list) => {
+      state.list = list;
+      render();
+      UI.toast(value ? 'Rappel programmé' : 'Rappel retiré');
+    });
+  };
+
+  UI.bindReminderField(editor, 'd-reminder', save);
+  $('#reminder-save').addEventListener('click', () => save(UI.readReminderInput($('#d-reminder-input'))));
 }
 
 function bindStatusMenu(id) {
@@ -383,6 +420,7 @@ function renderAdd() {
       <label class="form-field">Statut<select class="select" id="add-status">${options}</select></label>
       <label class="form-field">Lieu<input class="input" id="add-location" value="${esc(p.location)}" placeholder="Paris, télétravail…"></label>
       <label class="form-field">Lien de l'offre<input class="input" id="add-url" type="url" value="${esc(p.url)}" placeholder="https://…"></label>
+      <label class="form-field">Me rappeler${UI.reminderSelectHTML('add-reminder')}</label>
       <p id="add-error" class="form-error" role="alert"></p>
       <button type="submit" id="add-submit" class="btn btn--primary">Enregistrer</button>
     </form>`;
@@ -408,6 +446,7 @@ function handleAdd(e) {
     status: $('#add-status').value,
     location: $('#add-location').value.trim(),
     url: $('#add-url').value.trim(),
+    reminderAt: UI.reminderFromPreset($('#add-reminder').value),
     notes: "Ajouté depuis la popup de l'extension."
   });
 

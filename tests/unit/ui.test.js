@@ -71,3 +71,18 @@ test('computeStats', () => {
   assert.equal(UI.computeStats([{ status: 'wishlist' }]).responseRate, null);
   assert.deepEqual(UI.computeStats([]), { total: 0, sent: 0, interview: 0, offer: 0, responseRate: null });
 });
+
+test('formatReminder / formatReminderShort', () => {
+  assert.match(UI.formatReminder('2026-10-10T09:00'), /^sam\.? 10 oct\.? à 09:00$/);
+  assert.equal(UI.formatReminder(''), '');
+  assert.equal(UI.formatReminder('invalide'), '');
+  assert.match(UI.formatReminderShort('2026-10-10T09:00'), /^10 oct\.? 09:00$/);
+});
+
+test('reminderFieldHTML : champ date + heure et 4 pastilles', () => {
+  const html = UI.reminderFieldHTML('f-reminder', '2026-10-10T09:00');
+  assert.match(html, /<input[^>]+id="f-reminder-input"[^>]+type="datetime-local"[^>]+value="2026-10-10T09:00"/);
+  for (const p of ['tomorrow', 'in3days', 'in1week', 'clear']) assert.match(html, new RegExp(`data-preset="${p}"`));
+  assert.match(html, />Demain 9 h</);
+  assert.match(html, />Retirer</);
+});
