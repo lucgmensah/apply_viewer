@@ -35,17 +35,29 @@
   let successUntil = 0; // le message de succès reste affiché jusqu'à cette date
   let lastHref = window.location.href;
   let refreshTimer = null;
+  let retryCount = 0;
+  const MAX_RETRIES = 6;
 
-  function scheduleRefresh() {
+  function scheduleRefresh(delay = RENDER_DELAY_MS) {
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(refreshWidget, RENDER_DELAY_MS);
+    refreshTimer = setTimeout(refreshWidget, delay);
   }
 
   function refreshWidget() {
     try {
       const details = scrapeJobDetails();
+      const isJobPage = !!JobTracker.siteJobKey(window.location.href);
       const key = details.success ? JobTracker.jobKey(details.url) : null;
+
+      // Si l'URL correspond à une offre mais que le DOM (React) n'a pas encore fini de charger les détails
+      if (isJobPage && !key && retryCount < MAX_RETRIES) {
+        retryCount += 1;
+        scheduleRefresh(800);
+        return;
+      }
+
       if (key === currentKey) return;
+      retryCount = 0;
 
       currentKey = key;
       currentDetails = key ? details : null;
@@ -80,18 +92,24 @@
   // Ajout, changement de statut ou suppression depuis la popup ou le dashboard
   JobTracker.onChange(syncWidget);
 
-  if (document.readyState === 'complete') {
-    scheduleRefresh();
-  } else {
-    window.addEventListener('load', scheduleRefresh);
+  // Déclenchement réactif : on n'attend pas l'événement `load` complet (retardé par les pubs/trackers)
+  scheduleRefresh(500);
+  if (document.readyState !== 'complete') {
+    window.addEventListener('DOMContentLoaded', () => scheduleRefresh(300), { once: true });
+    window.addEventListener('load', () => scheduleRefresh(300), { once: true });
   }
 
-  setInterval(() => {
+  function onUrlChange() {
     if (window.location.href !== lastHref) {
       lastHref = window.location.href;
-      scheduleRefresh();
+      retryCount = 0;
+      scheduleRefresh(400);
     }
-  }, URL_POLL_MS);
+  }
+
+  window.addEventListener('popstate', onUrlChange);
+  window.addEventListener('hashchange', onUrlChange);
+  setInterval(onUrlChange, URL_POLL_MS);
 
   // --- FONCTION DE SCRAPING ---
   // `success` n'est vrai que sur une page d'offre d'un site supporté avec un titre trouvé.
@@ -107,24 +125,35 @@
       const titleEl = document.querySelector([
         ".job-details-jobs-unified-top-card__job-title",
         ".jobs-unified-top-card__job-title",
+        ".top-card-layout__title",
+        ".topcard__title",
         "h1.t-24",
+        "h2.t-24",
         ".jobs-details-top-card__job-title",
+        ".job-details-jobs-unified-top-card__job-title-link",
+        ".jobs-details__main-content h1",
+        ".jobs-details__main-content h2",
         ".p5 h1",
         "h1"
       ].join(","));
       title = titleEl ? titleEl.textContent : "";
 
       const companyEl = document.querySelector([
+        ".topcard__flavor--black-link",
+        ".top-card-layout__first-sub-headline a",
         ".job-details-jobs-unified-top-card__company-name a",
         ".jobs-unified-top-card__company-name a",
-        "a[href*='/company/']",
+        ".job-details-jobs-unified-top-card__company-name",
         ".jobs-unified-top-card__company-name",
+        "a[href*='/company/']",
         ".jobs-unified-top-card__primary-description a",
         ".p5 a"
       ].join(","));
       company = companyEl ? companyEl.textContent : "";
 
       const locEl = document.querySelector([
+        ".topcard__flavor--bullet",
+        ".top-card-layout__first-sub-headline .topcard__flavor:not(a)",
         ".job-details-jobs-unified-top-card__bullet",
         ".jobs-unified-top-card__bullet",
         ".jobs-unified-top-card__primary-description span",
@@ -137,16 +166,23 @@
     }
 
     // 2. Indeed
-    else if (url.includes("indeed.com")) {
+    else if (url.includes("indeed.com") || url.includes("indeed.fr")) {
       const titleEl = document.querySelector([
+        "[data-testid='vj-job-title']",
+        "[data-testid='company-info-title-row']",
+        "[data-testid='jobInfoHeader-title']",
         "h1.jobsearch-JobInfoHeader-title",
         ".jobsearch-JobInfoHeader-title span",
         "h1.jobTitle",
-        "h1"
+        "h1",
+        "h2"
       ].join(","));
       title = titleEl ? titleEl.textContent : "";
 
       const companyEl = document.querySelector([
+        "[data-testid='desktop-job-header'] a[href*='/cmp/']",
+        "[data-testid='inlineHeader-companyName'] a",
+        "[data-testid='inlineHeader-companyName']",
         "div.jobsearch-CompanyInfoContainer a",
         "a[href*='/cmp/']",
         "[data-company-name='true']",
@@ -157,10 +193,11 @@
       company = companyEl ? companyEl.textContent : "";
 
       const locEl = document.querySelector([
+        "[data-testid='job-location']",
+        "[data-testid='inlineHeader-companyLocation']",
         "#jobLocationSection",
         ".jobsearch-JobInfoHeader-subtitle div:last-child",
         ".jobsearch-InlineCompanyRating + div",
-        "[data-testid='job-location']",
         ".jobsearch-JobInfoContainer .jobsearch-JobInfoHeader-subtitle"
       ].join(","));
       location = locEl ? locEl.textContent : "";
@@ -170,20 +207,21 @@
     else if (url.includes("welcometothejungle.com")) {
       const titleEl = document.querySelector([
         "[data-testid='job-header-title']",
+        "header h2",
         "h1",
         "h2"
       ].join(","));
       title = titleEl ? titleEl.textContent : "";
 
       const companyEl = document.querySelector([
+        "[data-testid='job-header-company']",
         "a[href*='/companies/'] h4",
         "a[href*='/companies/'] span",
-        "a[href*='/companies/'] div",
-        "[data-testid='job-header-company']"
+        "a[href*='/companies/'] div"
       ].join(","));
 
-      if (companyEl && !companyEl.textContent.includes(title)) {
-        company = companyEl.textContent;
+      if (companyEl && companyEl.textContent.trim() && !companyEl.textContent.includes(title)) {
+        company = companyEl.textContent.trim();
       } else {
         const match = url.match(/\/companies\/([^/]+)/);
         if (match && match[1]) {
@@ -195,13 +233,12 @@
 
       const locEl = document.querySelector([
         "[data-testid='job-metadata-location']",
+        "[data-testid='job-header-location']",
         "span[title*='Lieu']",
         "i.wttj-icon-location + span"
       ].join(","));
       location = locEl ? locEl.textContent : "";
     }
-
-    const foundOnJobPage = !!(JobTracker.siteJobKey(url) && title);
 
     // --- SECOURS ---
     if (!title) {
@@ -219,7 +256,7 @@
     location = clean(location);
 
     if (company.toLowerCase() === "linkedin" && url.includes("linkedin.com")) company = "";
-    if (company.toLowerCase() === "indeed" && url.includes("indeed.com")) company = "";
+    if (company.toLowerCase() === "indeed" && (url.includes("indeed.com") || url.includes("indeed.fr"))) company = "";
     if (company.toLowerCase() === "welcome to the jungle" && url.includes("welcometothejungle")) company = "";
 
     if (title) {
@@ -228,6 +265,8 @@
         .replace(/ \| LinkedIn/i, "")
         .replace(/ - Welcome to the Jungle/i, "");
     }
+
+    const foundOnJobPage = !!(JobTracker.siteJobKey(url) && title);
 
     return {
       success: foundOnJobPage,
@@ -283,10 +322,20 @@
     container.innerHTML = html;
 
     let pending = STYLESHEETS.length;
+    let revealed = false;
     const reveal = () => {
       pending -= 1;
-      if (pending === 0) container.style.visibility = '';
+      if (pending <= 0 && !revealed) {
+        revealed = true;
+        container.style.visibility = '';
+      }
     };
+    setTimeout(() => {
+      if (!revealed) {
+        revealed = true;
+        container.style.visibility = '';
+      }
+    }, 400);
     STYLESHEETS.forEach((file) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';

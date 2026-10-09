@@ -81,12 +81,12 @@ var JobTracker = globalThis.JobTracker || (() => {
 
     if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) {
       const viewMatch = u.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)/);
-      const id = (viewMatch && viewMatch[1]) || u.searchParams.get('currentJobId');
+      const id = (viewMatch && viewMatch[1]) || u.searchParams.get('currentJobId') || u.searchParams.get('jobId');
       return id ? `linkedin:${id}` : null;
     }
 
-    if (host === 'indeed.com' || host.endsWith('.indeed.com')) {
-      const id = u.searchParams.get('jk') || u.searchParams.get('vjk');
+    if (host === 'indeed.com' || host.endsWith('.indeed.com') || host === 'indeed.fr' || host.endsWith('.indeed.fr')) {
+      const id = u.searchParams.get('jk') || u.searchParams.get('vjk') || u.searchParams.get('jobId') || u.searchParams.get('id');
       return id ? `indeed:${id}` : null;
     }
 
@@ -111,7 +111,7 @@ var JobTracker = globalThis.JobTracker || (() => {
   function isSupportedSite(url) {
     const u = parseUrl(url);
     if (!u) return false;
-    return /(^|\.)(linkedin|indeed|welcometothejungle)\.com$/.test(u.hostname);
+    return /(^|\.)(linkedin|welcometothejungle)\.com$/.test(u.hostname) || /(^|\.)indeed\.(com|fr)$/.test(u.hostname);
   }
 
   const normalize = (str) => String(str || '').trim().toLowerCase();

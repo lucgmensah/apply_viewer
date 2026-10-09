@@ -33,6 +33,7 @@
       "matches": [
         "https://*.linkedin.com/*",
         "https://*.indeed.com/*",
+        "https://*.indeed.fr/*",
         "https://*.welcometothejungle.com/*"
       ],
       "js": [
@@ -54,6 +55,7 @@
       "matches": [
         "https://*.linkedin.com/*",
         "https://*.indeed.com/*",
+        "https://*.indeed.fr/*",
         "https://*.welcometothejungle.com/*"
       ]
     }

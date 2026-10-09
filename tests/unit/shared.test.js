@@ -11,9 +11,10 @@ global.localStorage = {
 require(path.join(__dirname, '..', '..', 'shared.js'));
 const J = window.JobTracker;
 
-test('jobKey : identifiant Indeed (jk / vjk)', () => {
+test('jobKey : identifiant Indeed (jk / vjk / indeed.fr)', () => {
   assert.equal(J.jobKey('https://fr.indeed.com/viewjob?jk=abc123&from=serp'), 'indeed:abc123');
   assert.equal(J.jobKey('https://fr.indeed.com/jobs?q=dev&vjk=abc123'), 'indeed:abc123');
+  assert.equal(J.jobKey('https://www.indeed.fr/viewjob?jk=abc123'), 'indeed:abc123');
   assert.notEqual(J.jobKey('https://fr.indeed.com/viewjob?jk=aaa'), J.jobKey('https://fr.indeed.com/viewjob?jk=bbb'));
 });
 
@@ -21,6 +22,7 @@ test('jobKey : identifiant LinkedIn (vue et currentJobId)', () => {
   assert.equal(J.jobKey('https://www.linkedin.com/jobs/view/4012345678/?trk=x'), 'linkedin:4012345678');
   assert.equal(J.jobKey('https://www.linkedin.com/jobs/view/dev-front-at-acme-4012345678'), 'linkedin:4012345678');
   assert.equal(J.jobKey('https://www.linkedin.com/jobs/search/?currentJobId=4012345678&keywords=dev'), 'linkedin:4012345678');
+  assert.equal(J.jobKey('https://www.linkedin.com/jobs/collections/?jobId=4012345678'), 'linkedin:4012345678');
 });
 
 test('jobKey : WTTJ et URL générique', () => {
@@ -31,10 +33,13 @@ test('jobKey : WTTJ et URL générique', () => {
 test('siteJobKey : null hors page d\'offre', () => {
   assert.equal(J.siteJobKey('https://www.linkedin.com/jobs/'), null);
   assert.equal(J.siteJobKey('https://fr.indeed.com/'), null);
+  assert.equal(J.siteJobKey('https://indeed.fr/'), null);
 });
 
 test('isSupportedSite', () => {
   assert.ok(J.isSupportedSite('https://fr.indeed.com/viewjob?jk=1'));
+  assert.ok(J.isSupportedSite('https://www.indeed.fr/viewjob?jk=1'));
+  assert.ok(J.isSupportedSite('https://www.welcometothejungle.com/fr/jobs'));
   assert.ok(!J.isSupportedSite('https://evil-indeed.com.example.org/'));
 });
 
