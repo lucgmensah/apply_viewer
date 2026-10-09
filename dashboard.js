@@ -1,479 +1,422 @@
-// --- GESTION DU STOCKAGE (CHROME STORAGE OU LOCALSTORAGE FALLBACK) ---
-const storage = {
-  get: function(callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['candidatures'], function(result) {
-        callback(result.candidatures || []);
-      });
-    } else {
-      // Fallback local pour développement et test hors extension
-      const data = localStorage.getItem('job_tracker_candidatures');
-      callback(data ? JSON.parse(data) : []);
-    }
-  },
-  set: function(candidatures, callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ candidatures }, function() {
-        if (callback) callback();
-      });
-    } else {
-      localStorage.setItem('job_tracker_candidatures', JSON.stringify(candidatures));
-      if (callback) callback();
-    }
-  }
+// --- DASHBOARD : STATISTIQUES, KANBAN, PANNEAU DE DÉTAIL ---
+// Dépend de shared.js (JobTracker) et ui.js (UI).
+
+const state = {
+  list: [],
+  query: '',
+  panelId: null, // id de la candidature ouverte, 'new' en création
+  returnFocus: null, // sélecteur de l'élément à refocaliser à la fermeture
+  panelSnapshot: null // valeurs du panneau à l'ouverture
 };
 
-// --- VARIABLES D'ÉTAT ---
-let allCandidatures = [];
-let filteredCandidatures = [];
-let currentFilterStatus = 'all'; // 'all' ou un statut spécifique pour filtre par stat-card
-let searchQuery = '';
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => JobTracker.escapeHTML(s);
 
-// --- ÉLÉMENTS DU DOM ---
-const searchInput = document.getElementById('search-input');
-const btnAdd = document.getElementById('btn-add');
-const btnExport = document.getElementById('btn-export');
-const btnCancel = document.getElementById('btn-cancel');
-const btnDelete = document.getElementById('btn-delete');
-const btnSave = document.getElementById('btn-save');
-const modalClose = document.getElementById('modal-close');
-const modalOverlay = document.getElementById('candidature-modal');
-const modalForm = document.getElementById('candidature-form');
-const modalTitle = document.getElementById('modal-title');
-
-// Champs du formulaire
-const fieldId = document.getElementById('field-id');
-const fieldTitle = document.getElementById('field-title');
-const fieldCompany = document.getElementById('field-company');
-const fieldStatus = document.getElementById('field-status');
-const fieldDate = document.getElementById('field-date');
-const fieldLocation = document.getElementById('field-location');
-const fieldSalary = document.getElementById('field-salary');
-const fieldUrl = document.getElementById('field-url');
-const fieldContactName = document.getElementById('field-contact-name');
-const fieldContactEmail = document.getElementById('field-contact-email');
-const fieldContactPhone = document.getElementById('field-contact-phone');
-const fieldNotes = document.getElementById('field-notes');
-
-// Stats
-const statTotal = document.getElementById('stat-total');
-const statWishlist = document.getElementById('stat-wishlist');
-const statApplied = document.getElementById('stat-applied');
-const statInterview = document.getElementById('stat-interview');
-const statOffer = document.getElementById('stat-offer');
-const statRejected = document.getElementById('stat-rejected');
+const ICONS = {
+  total: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  sent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg>',
+  interview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  offer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/></svg>',
+  rate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+};
 
 // --- INITIALISATION ---
 document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  setupEventListeners();
-  setupDragAndDrop();
+  $('#search-input').addEventListener('input', (e) => {
+    state.query = e.target.value.trim().toLowerCase();
+    renderKanban();
+  });
+  $('#btn-add').addEventListener('click', () => openPanel({}));
+  $('#btn-export').addEventListener('click', handleExportCSV);
+
+  setupKanbanEvents();
+  setupPanel();
+
+  JobTracker.getAll((list) => {
+    state.list = list;
+    render();
+    openFromHash();
+  });
+  JobTracker.onChange((list) => {
+    state.list = list;
+    // La candidature ouverte a été supprimée ailleurs (popup, autre onglet)
+    if (state.panelId && state.panelId !== 'new' && !list.some((c) => c.id === state.panelId)) {
+      closePanel();
+      UI.toast('Cette candidature a été supprimée');
+    }
+    render();
+  });
 });
 
-// Charger les données
-function loadData() {
-  storage.get((data) => {
-    allCandidatures = data;
-    applyFiltersAndRender();
-  });
+function render() {
+  renderStats();
+  renderKanban();
 }
 
-// Configurer les écouteurs d'événements
-function setupEventListeners() {
-  // Recherche
-  searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value.toLowerCase().trim();
-    applyFiltersAndRender();
-  });
-
-  // Filtres par clic sur cartes stats
-  const statCards = document.querySelectorAll('.stat-card');
-  statCards.forEach(card => {
-    card.addEventListener('click', () => {
-      const filter = card.dataset.filter;
-      
-      // Toggle de l'état actif
-      statCards.forEach(c => c.classList.remove('active'));
-      if (currentFilterStatus === filter) {
-        currentFilterStatus = 'all';
-      } else {
-        currentFilterStatus = filter;
-        card.classList.add('active');
-      }
-      applyFiltersAndRender();
-    });
-  });
-
-  // Modales
-  btnAdd.addEventListener('click', () => openModal());
-  modalClose.addEventListener('click', closeModal);
-  btnCancel.addEventListener('click', closeModal);
-  
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeModal();
-  });
-
-  // Formulaire (Enregistrement / Suppression)
-  modalForm.addEventListener('submit', handleSaveCandidature);
-  btnDelete.addEventListener('click', handleDeleteCandidature);
-
-  // Export Excel/CSV
-  btnExport.addEventListener('click', handleExportCSV);
+// --- STATISTIQUES ---
+function renderStats() {
+  const s = UI.computeStats(state.list);
+  const cards = [
+    { id: 'total', label: 'Total', value: s.total },
+    { id: 'sent', label: 'Envoyées', value: s.sent },
+    { id: 'interview', label: 'Entretiens', value: s.interview },
+    { id: 'offer', label: 'Offres', value: s.offer },
+    { id: 'rate', label: 'Taux de réponse', value: s.responseRate === null ? '—' : `${s.responseRate} %`,
+      title: 'Estimation : candidatures ayant dépassé le statut "envoyée"' }
+  ];
+  $('.stats').innerHTML = cards.map((c) => `
+    <div class="card stat-card" data-stat="${c.id}"${c.title ? ` title="${esc(c.title)}"` : ''}>
+      <span class="stat-card__icon" aria-hidden="true">${ICONS[c.id]}</span>
+      <span class="stat-card__value">${esc(String(c.value))}</span>
+      <span class="stat-card__label">${esc(c.label)}</span>
+    </div>`).join('');
 }
 
-// --- FILTRES & RENDU ---
-function applyFiltersAndRender() {
-  // 1. Filtrer selon la recherche
-  filteredCandidatures = allCandidatures.filter(c => {
-    const titleMatch = (c.title || '').toLowerCase().includes(searchQuery);
-    const companyMatch = (c.company || '').toLowerCase().includes(searchQuery);
-    const notesMatch = (c.notes || '').toLowerCase().includes(searchQuery);
-    const locationMatch = (c.location || '').toLowerCase().includes(searchQuery);
-    return titleMatch || companyMatch || notesMatch || locationMatch;
-  });
-
-  // 2. Filtrer selon le bouton de stat sélectionné
-  if (currentFilterStatus !== 'all') {
-    filteredCandidatures = filteredCandidatures.filter(c => c.status === currentFilterStatus);
-  }
-
-  // Mettre à jour les compteurs globaux et colonnes
-  updateStats();
-  
-  // Vider les colonnes
-  const columns = ['wishlist', 'applied', 'interview', 'offer', 'rejected'];
-  columns.forEach(col => {
-    document.getElementById(`cards-${col}`).innerHTML = '';
-    document.getElementById(`count-${col}`).textContent = '0';
-  });
-
-  // Remplir les colonnes
-  filteredCandidatures.forEach(cand => {
-    const cardElement = createJobCard(cand);
-    const container = document.getElementById(`cards-${cand.status}`);
-    if (container) {
-      container.appendChild(cardElement);
-      // Mettre à jour le compteur de la colonne
-      const countEl = document.getElementById(`count-${cand.status}`);
-      if (countEl) {
-        countEl.textContent = parseInt(countEl.textContent || 0) + 1;
-      }
-    }
-  });
+// --- KANBAN ---
+function matchesQuery(c) {
+  if (!state.query) return true;
+  return ['title', 'company', 'location', 'notes'].some((k) => (c[k] || '').toLowerCase().includes(state.query));
 }
 
-// Calculer et afficher les statistiques
-function updateStats() {
-  const stats = {
-    total: allCandidatures.length,
-    wishlist: allCandidatures.filter(c => c.status === 'wishlist').length,
-    applied: allCandidatures.filter(c => c.status === 'applied').length,
-    interview: allCandidatures.filter(c => c.status === 'interview').length,
-    offer: allCandidatures.filter(c => c.status === 'offer').length,
-    rejected: allCandidatures.filter(c => c.status === 'rejected').length
-  };
-
-  statTotal.textContent = stats.total;
-  statWishlist.textContent = stats.wishlist;
-  statApplied.textContent = stats.applied;
-  statInterview.textContent = stats.interview;
-  statOffer.textContent = stats.offer;
-  statRejected.textContent = stats.rejected;
-}
-
-// Créer l'élément HTML d'une carte
-function createJobCard(c) {
-  const card = document.createElement('div');
-  card.className = 'job-card';
-  card.setAttribute('draggable', 'true');
-  card.dataset.id = c.id;
-  card.dataset.status = c.status;
-
-  // Formater la date en FR (JJ/MM/AAAA)
-  let dateFormatted = '';
-  if (c.dateApplied) {
-    const d = new Date(c.dateApplied);
-    if (!isNaN(d.getTime())) {
-      dateFormatted = d.toLocaleDateString('fr-FR');
-    }
-  }
-
-  // Préparer les badges
-  let badgesHTML = '';
-  if (c.location) {
-    badgesHTML += `<span class="badge badge-location">${escapeHTML(c.location)}</span>`;
-  }
-  if (c.salary) {
-    badgesHTML += `<span class="badge badge-salary">${escapeHTML(c.salary)}</span>`;
-  }
-
-  card.innerHTML = `
-    <div class="job-card-title">${escapeHTML(c.title)}</div>
-    <div class="job-card-company">${escapeHTML(c.company)}</div>
-    <div class="job-card-footer">
-      <span class="job-card-date">${dateFormatted}</span>
-      <div class="job-card-badges">
-        ${badgesHTML}
+function cardHTML(c) {
+  const meta = [c.location, UI.relativeTime(c.dateApplied)].filter(Boolean).map(esc).join(' · ');
+  return `
+    <article class="kanban-card" data-id="${esc(c.id)}" draggable="true" tabindex="0" aria-label="${esc(c.title)} — ${esc(c.company)}">
+      <div class="kanban-card__title">${esc(c.title)}</div>
+      <div class="kanban-card__company">${esc(c.company)}</div>
+      <div class="kanban-card__footer">
+        <span class="kanban-card__meta">${meta}</span>
+        ${c.salary ? `<span class="tag tag--neutral">${esc(c.salary)}</span>` : ''}
       </div>
-    </div>
-  `;
-
-  // Ouvrir les détails lors du clic
-  card.addEventListener('click', (e) => {
-    // Empêcher l'ouverture si on dragge
-    if (card.classList.contains('dragging')) return;
-    openModal(c);
-  });
-
-  // Événements de Drag
-  card.addEventListener('dragstart', () => {
-    card.classList.add('dragging');
-  });
-
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-    // Enlever les styles temporaires des colonnes
-    document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
-  });
-
-  return card;
+    </article>`;
 }
 
-// --- GESTION DU DRAG & DROP ---
-function setupDragAndDrop() {
-  const columns = document.querySelectorAll('.kanban-column');
-  
-  columns.forEach(col => {
-    col.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      col.classList.add('drag-over');
-    });
-
-    col.addEventListener('dragleave', () => {
-      col.classList.remove('drag-over');
-    });
-
-    col.addEventListener('drop', (e) => {
-      e.preventDefault();
-      col.classList.remove('drag-over');
-      
-      const draggingCard = document.querySelector('.job-card.dragging');
-      if (draggingCard) {
-        const id = draggingCard.dataset.id;
-        const newStatus = col.dataset.status;
-        
-        // Mettre à jour dans la liste
-        allCandidatures = allCandidatures.map(cand => {
-          if (cand.id === id) {
-            return { 
-              ...cand, 
-              status: newStatus,
-              // Mettre à jour automatiquement la date d'action si c'est "envoyée" ou "entretien"
-              dateApplied: (newStatus === 'applied' && !cand.dateApplied) ? new Date().toISOString().slice(0, 10) : cand.dateApplied
-            };
-          }
-          return cand;
-        });
-
-        // Enregistrer et rafraîchir
-        storage.set(allCandidatures, () => {
-          applyFiltersAndRender();
-        });
-      }
-    });
-  });
+function renderKanban() {
+  const visible = UI.sortCandidatures(state.list.filter(matchesQuery));
+  $('.kanban').innerHTML = UI.STATUSES.map((s) => {
+    const cards = visible.filter((c) => UI.statusOf(c).id === s.id);
+    return `
+      <section class="kanban-col" data-status="${s.id}" aria-label="${esc(s.label)}">
+        <header class="kanban-col__header">
+          <span class="kanban-col__dot" style="background: var(--status-${s.id}-fg)" aria-hidden="true"></span>
+          <h2 class="kanban-col__title">${esc(s.label)}</h2>
+          <span class="kanban-col__count">${cards.length}</span>
+          <button type="button" class="icon-btn kanban-col__add" aria-label="Ajouter dans ${esc(s.label)}" title="Ajouter dans ${esc(s.label)}">${ICONS.plus}</button>
+        </header>
+        <div class="kanban-col__cards">
+          ${cards.length ? cards.map(cardHTML).join('') : '<p class="kanban-col__empty">Aucune candidature</p>'}
+        </div>
+      </section>`;
+  }).join('');
 }
 
-// --- GESTION DE LA MODALE ET DU FORMULAIRE ---
-function openModal(cand = null) {
-  modalForm.reset();
-  
-  if (cand) {
-    // Mode édition
-    modalTitle.textContent = "Modifier la Candidature";
-    btnDelete.classList.remove('hidden');
-    
-    fieldId.value = cand.id;
-    fieldTitle.value = cand.title || '';
-    fieldCompany.value = cand.company || '';
-    fieldStatus.value = cand.status || 'wishlist';
-    fieldDate.value = cand.dateApplied || '';
-    fieldLocation.value = cand.location || '';
-    fieldSalary.value = cand.salary || '';
-    fieldUrl.value = cand.url || '';
-    fieldContactName.value = cand.contactName || '';
-    fieldContactEmail.value = cand.contactEmail || '';
-    fieldContactPhone.value = cand.contactPhone || '';
-    fieldNotes.value = cand.notes || '';
-  } else {
-    // Mode ajout
-    modalTitle.textContent = "Nouvelle Candidature";
-    btnDelete.classList.add('hidden');
-    fieldId.value = '';
-    
-    // Date du jour par défaut
-    fieldDate.value = new Date().toISOString().slice(0, 10);
-    fieldStatus.value = 'wishlist';
-  }
-  
-  modalOverlay.classList.add('open');
-}
+// Délégation d'événements : le Kanban est redessiné à chaque modification
+function setupKanbanEvents() {
+  const kanban = $('.kanban');
 
-function closeModal() {
-  modalOverlay.classList.remove('open');
-}
-
-// Sauvegarde candidature
-function handleSaveCandidature(e) {
-  e.preventDefault();
-  
-  const id = fieldId.value;
-  const candidatureData = {
-    id: id || generateUUID(),
-    title: fieldTitle.value.trim(),
-    company: fieldCompany.value.trim(),
-    status: fieldStatus.value,
-    dateApplied: fieldDate.value,
-    location: fieldLocation.value.trim(),
-    salary: fieldSalary.value.trim(),
-    url: fieldUrl.value.trim(),
-    contactName: fieldContactName.value.trim(),
-    contactEmail: fieldContactEmail.value.trim(),
-    contactPhone: fieldContactPhone.value.trim(),
-    notes: fieldNotes.value.trim()
-  };
-
-  // Détection des doublons (exclure l'élément en cours de modification)
-  const isDuplicate = allCandidatures.some(c => {
-    if (c.id === id) return false;
-
-    const t1 = (c.title || '').trim().toLowerCase();
-    const t2 = (candidatureData.title || '').trim().toLowerCase();
-    const comp1 = (c.company || '').trim().toLowerCase();
-    const comp2 = (candidatureData.company || '').trim().toLowerCase();
-
-    // 1. Comparer l'URL (sans paramètres de tracking)
-    if (candidatureData.url && c.url) {
-      const cleanUrl1 = c.url.split('?')[0].split('#')[0];
-      const cleanUrl2 = candidatureData.url.split('?')[0].split('#')[0];
-      if (cleanUrl1 === cleanUrl2) return true;
+  kanban.addEventListener('click', (e) => {
+    const add = e.target.closest('.kanban-col__add');
+    if (add) {
+      openPanel({ status: add.closest('.kanban-col').dataset.status, returnFocus: add });
+      return;
     }
-
-    // 2. Vérification par titre + entreprise
-    return t1 === t2 && comp1 === comp2;
+    const card = e.target.closest('.kanban-card');
+    if (card) openPanel({ id: card.dataset.id, returnFocus: card });
   });
 
-  if (isDuplicate) {
-    alert("Une candidature avec ce lien ou ce poste chez cette entreprise existe déjà !");
+  kanban.addEventListener('keydown', (e) => {
+    const card = e.target.closest('.kanban-card');
+    if (card && e.key === 'Enter') {
+      e.preventDefault();
+      openPanel({ id: card.dataset.id, returnFocus: card });
+    }
+  });
+
+  // --- GLISSER-DÉPOSER ---
+  let draggedId = null;
+
+  kanban.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.kanban-card');
+    if (!card) return;
+    draggedId = card.dataset.id;
+    card.classList.add('kanban-card--dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedId);
+    }
+  });
+
+  kanban.addEventListener('dragend', (e) => {
+    const card = e.target.closest('.kanban-card');
+    if (card) card.classList.remove('kanban-card--dragging');
+    kanban.querySelectorAll('.kanban-col--drop').forEach((c) => c.classList.remove('kanban-col--drop'));
+    draggedId = null;
+  });
+
+  kanban.addEventListener('dragover', (e) => {
+    const col = e.target.closest('.kanban-col');
+    if (!col || !draggedId) return;
+    e.preventDefault();
+    kanban.querySelectorAll('.kanban-col--drop').forEach((c) => c !== col && c.classList.remove('kanban-col--drop'));
+    col.classList.add('kanban-col--drop');
+  });
+
+  kanban.addEventListener('dragleave', (e) => {
+    const col = e.target.closest('.kanban-col');
+    if (col && !col.contains(e.relatedTarget)) col.classList.remove('kanban-col--drop');
+  });
+
+  kanban.addEventListener('drop', (e) => {
+    const col = e.target.closest('.kanban-col');
+    if (!col || !draggedId) return;
+    e.preventDefault();
+    col.classList.remove('kanban-col--drop');
+    const id = draggedId;
+    const status = col.dataset.status;
+    JobTracker.update((list) => list.map((c) => (c.id === id ? JobTracker.applyStatus(c, status) : c)), (saved, list) => {
+      state.list = list;
+      render();
+    });
+  });
+}
+
+// --- PANNEAU DE DÉTAIL ---
+const FIELDS = {
+  title: 'f-title',
+  company: 'f-company',
+  dateApplied: 'f-date',
+  location: 'f-location',
+  salary: 'f-salary',
+  url: 'f-url',
+  contactName: 'f-contact-name',
+  contactEmail: 'f-contact-email',
+  contactPhone: 'f-contact-phone',
+  notes: 'f-notes'
+};
+
+const panelEls = () => ({ panel: $('.panel'), backdrop: $('.panel-backdrop') });
+
+function setupPanel() {
+  $('.status-group').innerHTML = UI.STATUSES.map((s) => `
+    <label class="status-option">
+      <input type="radio" name="status" value="${s.id}">
+      ${UI.statusTag(s.id)}
+    </label>`).join('');
+
+  $('#panel-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    savePanel();
+  });
+  $('#panel-close').addEventListener('click', closePanel);
+  $('#panel-cancel').addEventListener('click', closePanel);
+  $('.panel-backdrop').addEventListener('click', closePanel);
+  $('#panel-delete').addEventListener('click', () => deleteCandidature(state.panelId));
+
+  // Écouté sur le document : un clic dans une zone non focalisable du panneau
+  // renvoie le focus sur <body>, hors du panneau.
+  document.addEventListener('keydown', (e) => {
+    if ($('.panel').classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closePanel();
+    }
+    if (e.key === 'Tab') trapFocus(e);
+  });
+
+  window.addEventListener('hashchange', openFromHash);
+}
+
+// Garde le focus dans le panneau tant qu'il est ouvert
+function trapFocus(e) {
+  const focusables = [...$('.panel').querySelectorAll('button, input, textarea, select, a[href]')]
+    .filter((el) => !el.disabled && el.offsetParent !== null && !(el.type === 'radio' && !el.checked));
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (!$('.panel').contains(document.activeElement)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  } else if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+// Sélecteur de l'élément qui a ouvert le panneau (les cartes sont recréées à chaque rendu)
+function focusSelector(el) {
+  if (!el) return null;
+  if (el.dataset && el.dataset.id) return `.kanban-card[data-id="${CSS.escape(el.dataset.id)}"]`;
+  const col = el.closest && el.closest('.kanban-col');
+  if (col) return `.kanban-col[data-status="${col.dataset.status}"] .kanban-col__add`;
+  return el.id ? `#${el.id}` : null;
+}
+
+function openPanel({ id, status, returnFocus } = {}) {
+  const existing = id ? state.list.find((c) => c.id === id) : null;
+  if (id && !existing) {
+    UI.toast('Candidature introuvable');
     return;
   }
 
-  if (id) {
-    // Modification
-    allCandidatures = allCandidatures.map(c => c.id === id ? candidatureData : c);
+  const c = existing || { status: status || 'wishlist', dateApplied: JobTracker.todayISO() };
+  state.panelId = existing ? existing.id : 'new';
+  state.returnFocus = focusSelector(returnFocus || document.activeElement);
+
+  $('#panel-heading').textContent = existing ? 'Modifier la candidature' : 'Nouvelle candidature';
+  $('#panel-delete').classList.toggle('hidden', !existing);
+  for (const [key, elId] of Object.entries(FIELDS)) {
+    const input = document.getElementById(elId);
+    input.value = c[key] || '';
+    input.removeAttribute('aria-invalid');
+  }
+  const statusId = UI.statusOf(c).id;
+  document.querySelectorAll('.panel input[name="status"]').forEach((r) => { r.checked = r.value === statusId; });
+  // Valeurs à l'ouverture : à l'enregistrement, seuls les champs modifiés sont écrits,
+  // pour ne pas écraser ce qui a changé ailleurs pendant l'édition.
+  state.panelSnapshot = readPanelFields();
+
+  const { panel, backdrop } = panelEls();
+  panel.classList.remove('hidden');
+  backdrop.classList.remove('hidden');
+  panel.querySelector('.panel__body').scrollTop = 0;
+  history.replaceState(null, '', existing ? '#' + encodeURIComponent(existing.id) : location.pathname);
+  $('#f-title').focus();
+}
+
+function closePanel() {
+  const { panel, backdrop } = panelEls();
+  if (panel.classList.contains('hidden')) return;
+  panel.classList.add('hidden');
+  backdrop.classList.add('hidden');
+  state.panelId = null;
+  history.replaceState(null, '', location.pathname);
+  const target = state.returnFocus && document.querySelector(state.returnFocus);
+  if (target) target.focus();
+}
+
+function openFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return;
+  if (state.list.some((c) => c.id === id)) {
+    openPanel({ id });
   } else {
-    // Nouvel ajout
-    allCandidatures.unshift(candidatureData);
+    history.replaceState(null, '', location.pathname);
+    UI.toast('Candidature introuvable');
+  }
+}
+
+function readPanelFields() {
+  const data = {};
+  for (const [key, elId] of Object.entries(FIELDS)) data[key] = document.getElementById(elId).value.trim();
+  data.status = (document.querySelector('.panel input[name="status"]:checked') || {}).value || 'wishlist';
+  return data;
+}
+
+function savePanel() {
+  const fields = readPanelFields();
+  const missing = ['title', 'company'].filter((k) => !fields[k]);
+  for (const k of ['title', 'company']) {
+    document.getElementById(FIELDS[k]).setAttribute('aria-invalid', String(missing.includes(k)));
+  }
+  if (missing.length) {
+    document.getElementById(FIELDS[missing[0]]).focus();
+    UI.toast("Le poste et l'entreprise sont obligatoires.");
+    return;
   }
 
-  storage.set(allCandidatures, () => {
-    applyFiltersAndRender();
-    closeModal();
+  const editId = state.panelId !== 'new' ? state.panelId : null;
+  const candidature = editId ? null : JobTracker.createCandidature(fields);
+  const changes = Object.fromEntries(Object.entries(fields).filter(([k, v]) => v !== state.panelSnapshot[k]));
+
+  JobTracker.update((list) => {
+    if (!editId) return JobTracker.isDuplicate(list, fields) ? null : [candidature, ...list];
+    const current = list.find((c) => c.id === editId);
+    const merged = { ...current, ...changes };
+    if (!current || JobTracker.isDuplicate(list, merged, editId)) return null;
+    return list.map((c) => (c.id === editId ? merged : c));
+  }, (saved, list) => {
+    if (!saved) {
+      UI.toast('Une candidature identique existe déjà.');
+      return;
+    }
+    state.list = list;
+    render();
+    closePanel();
+    UI.toast('Candidature enregistrée');
   });
 }
 
-// Suppression candidature
-function handleDeleteCandidature() {
-  const id = fieldId.value;
-  if (!id) return;
-
-  if (confirm("Êtes-vous sûr de vouloir supprimer cette candidature ?")) {
-    allCandidatures = allCandidatures.filter(c => c.id !== id);
-    storage.set(allCandidatures, () => {
-      applyFiltersAndRender();
-      closeModal();
+// Suppression immédiate, annulable pendant 5 s (réinsertion à la position d'origine)
+function deleteCandidature(id) {
+  let removed = null;
+  // Fermer avant d'écrire : onChange peut arriver avant le retour de l'écriture
+  // et ne doit pas prendre cette suppression pour une suppression faite ailleurs.
+  closePanel();
+  JobTracker.update((list) => {
+    const index = list.findIndex((c) => c.id === id);
+    if (index === -1) return null;
+    removed = { item: list[index], index };
+    return list.filter((c) => c.id !== id);
+  }, (saved, list) => {
+    state.list = list;
+    render();
+    if (!saved) return;
+    UI.toast('Candidature supprimée', {
+      actionLabel: 'Annuler',
+      duration: 5000,
+      onAction: () => JobTracker.update((current) => {
+        if (current.some((c) => c.id === removed.item.id)) return null;
+        const next = current.slice();
+        next.splice(Math.min(removed.index, next.length), 0, removed.item);
+        return next;
+      }, (restored, restoredList) => {
+        state.list = restoredList;
+        render();
+      })
     });
-  }
+  });
 }
 
-// --- EXPORTATION EXCEL / CSV ---
+// --- EXPORT CSV ---
 function handleExportCSV() {
-  if (allCandidatures.length === 0) {
-    alert("Aucune candidature à exporter.");
+  if (state.list.length === 0) {
+    UI.toast('Aucune candidature à exporter.');
     return;
   }
 
   const headers = [
-    "Titre du Poste", 
-    "Entreprise", 
-    "Statut", 
-    "Date Action / Envoi", 
-    "Lieu", 
-    "Salaire", 
-    "Lien de l'offre", 
-    "Contact Nom", 
-    "Contact Email", 
-    "Contact Telephone", 
-    "Notes"
+    'Titre du Poste', 'Entreprise', 'Statut', 'Date Action / Envoi', 'Lieu', 'Salaire',
+    "Lien de l'offre", 'Contact Nom', 'Contact Email', 'Contact Telephone', 'Notes'
   ];
-  
-  const statusMap = {
-    wishlist: "A postuler",
-    applied: "Candidature envoyee",
-    interview: "Entretien en cours",
-    offer: "Offre recue",
-    rejected: "Refusee / Classee"
-  };
 
-  const rows = allCandidatures.map(c => [
-    c.title || "",
-    c.company || "",
-    statusMap[c.status] || c.status || "",
-    c.dateApplied || "",
-    c.location || "",
-    c.salary || "",
-    c.url || "",
-    c.contactName || "",
-    c.contactEmail || "",
-    c.contactPhone || "",
-    c.notes || ""
+  const rows = state.list.map((c) => [
+    c.title, c.company, UI.statusOf(c).label, c.dateApplied, c.location, c.salary,
+    c.url, c.contactName, c.contactEmail, c.contactPhone, c.notes
   ]);
 
-  // Générer le contenu CSV avec séparateur point-virgule (Excel FR Windows)
+  // Séparateur point-virgule (Excel FR Windows)
   const csvContent = [
-    headers.join(";"),
-    ...rows.map(row => row.map(val => {
+    headers.join(';'),
+    ...rows.map((row) => row.map((val) => {
+      // Neutraliser les formules Excel (=, +, -, @) issues de contenus scrapés
+      let text = String(val || '');
+      if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
       // Échapper les guillemets et remplacer les retours à la ligne par des espaces
-      const escaped = String(val).replace(/"/g, '""').replace(/\r?\n|\r/g, " ");
-      return `"${escaped}"`;
-    }).join(";"))
-  ].join("\r\n");
+      return `"${text.replace(/"/g, '""').replace(/\r?\n|\r/g, ' ')}"`;
+    }).join(';'))
+  ].join('\r\n');
 
-  // Ajout du BOM UTF-8 (\uFEFF) pour qu'Excel Windows reconnaisse l'encodage de suite
-  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  // BOM UTF-8 pour qu'Excel Windows reconnaisse l'encodage
+  const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  const dateStr = new Date().toISOString().slice(0, 10);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `suivi_candidatures_${dateStr}.csv`);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `suivi_candidatures_${JobTracker.todayISO()}.csv`;
   document.body.appendChild(link);
-  
   link.click();
   document.body.removeChild(link);
-}
-
-// --- UTILS ---
-function generateUUID() {
-  return 'uuid-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
-}
-
-function escapeHTML(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  URL.revokeObjectURL(url);
 }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Suivi de Candidatures - Job Tracker BÊTA",
+  "name": "Apply View — Bêta",
   "version": "1.0.0",
-  "description": "Suivez vos candidatures simplement (Kanban, Excel). CETTE EXTENSION EST POUR LES TESTS BÊTA",
+  "description": "Suivez vos candidatures simplement (Kanban, export CSV). Version bêta.",
   "permissions": [
     "storage",
     "activeTab",
@@ -29,14 +29,31 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.linkedin.com/jobs/*",
-        "https://*.linkedin.com/view-job/*",
+        "https://*.linkedin.com/*",
         "https://*.indeed.com/*",
-        "https://*.welcometothejungle.com/companies/*/jobs/*",
-        "https://*.welcometothejungle.com/fr/companies/*/jobs/*"
+        "https://*.welcometothejungle.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "shared.js",
+        "ui.js",
+        "content.js"
+      ],
       "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "tokens.css",
+        "components.css",
+        "widget.css",
+        "fonts/plus-jakarta-sans-latin-wght-normal.woff2"
+      ],
+      "matches": [
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.welcometothejungle.com/*"
+      ]
     }
   ]
 }

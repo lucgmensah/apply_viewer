@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Apply View — Composants</title>
+  <link rel="stylesheet" href="../../tokens.css">
+  <link rel="stylesheet" href="../../components.css">
+  <style>
+    body { padding: 24px; }
+    .sg { display: grid; gap: 24px; max-width: 760px; }
+    .sg-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sg h2 { font-size: 13px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+  <div class="sg">
+    <section>
+      <h2>Boutons</h2>
+      <div class="sg-row">
+        <button class="btn btn--primary">Enregistrer</button>
+        <button class="btn btn--secondary">Exporter CSV</button>
+        <button class="btn btn--ghost">Annuler</button>
+        <button class="btn btn--danger">Supprimer</button>
+        <button class="icon-btn" aria-label="Ajouter">+</button>
+        <span class="logo-dot" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Onglets</h2>
+      <div class="segmented" role="tablist">
+        <button class="segmented__item" role="tab" aria-selected="false">À faire <span class="segmented__count">2</span></button>
+        <button class="segmented__item" role="tab" aria-selected="true">En cours <span class="segmented__count">3</span></button>
+        <button class="segmented__item" role="tab" aria-selected="false">Terminées <span class="segmented__count">2</span></button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Tags</h2>
+      <div class="sg-row">
+        <span class="tag tag--wishlist">À postuler</span>
+        <span class="tag tag--applied">Envoyée</span>
+        <span class="tag tag--interview">Entretien</span>
+        <span class="tag tag--offer">Offre</span>
+        <span class="tag tag--rejected">Refusée</span>
+        <span class="tag tag--neutral">45k€</span>
+      </div>
+    </section>
+
+    <section style="max-width: 340px">
+      <h2>Liste</h2>
+      <button class="job-item">
+        <span class="job-item__title">Développeur Full-Stack Senior JavaScript TypeScript React Node.js (H/F)</span>
+        <span class="job-item__meta">Acme · Paris · il y a 3 j</span>
+        <span class="tag tag--applied">Envoyée</span>
+      </button>
+      <button class="job-item">
+        <span class="job-item__title">Data Engineer</span>
+        <span class="job-item__meta">Foo · Lyon · hier</span>
+        <span class="tag tag--interview">Entretien</span>
+      </button>
+    </section>
+
+    <section style="max-width: 340px">
+      <h2>Détail</h2>
+      <div class="panel-header">
+        <button class="icon-btn" aria-label="Retour">←</button>
+        <h2>Détail</h2>
+      </div>
+      <div class="card">
+        <div class="field-row"><span class="field-row__label">Statut</span><span class="field-row__value"><span class="tag tag--applied">Envoyée</span></span></div>
+        <div class="field-row"><span class="field-row__label">Date</span><span class="field-row__value">22/04/2026</span></div>
+        <div class="field-row"><span class="field-row__label">Lieu</span><span class="field-row__value">Paris</span></div>
+      </div>
+    </section>
+
+    <section style="max-width: 420px">
+      <h2>Formulaire</h2>
+      <h3 class="section-title">Offre</h3>
+      <div class="field-row"><label class="field-row__label" for="a">Poste</label><input id="a" class="input input--bare" value="Dev Front"></div>
+      <input class="input" placeholder="Rechercher…">
+      <select class="select"><option>Envoyée</option></select>
+      <textarea class="textarea" rows="3">Notes</textarea>
+    </section>
+
+    <section>
+      <h2>Bandeau et état vide</h2>
+      <div class="banner"><strong>Dev Java — Devoteam</strong><button class="btn btn--primary">Ajouter cette offre</button></div>
+      <div class="empty-state">Aucune candidature en cours.</div>
+    </section>
+
+    <section>
+      <h2>Toast</h2>
+      <div class="toast" style="position: static">Candidature supprimée <button class="toast__action">Annuler</button></div>
+    </section>
+  </div>
+</body>
+</html>

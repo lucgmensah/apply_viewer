@@ -1,0 +1,12 @@
+{
+  "name": "apply-view",
+  "private": true,
+  "description": "Outils de test de l'extension Apply View (l'extension elle-même n'a ni dépendance ni build).",
+  "scripts": {
+    "test": "node --test \"tests/unit/**/*.test.js\"",
+    "e2e": "node --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/**/*.e2e.js\""
+  },
+  "devDependencies": {
+    "puppeteer": "^25.12.0"
+  }
+}
