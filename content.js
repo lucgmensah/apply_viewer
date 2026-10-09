@@ -369,7 +369,7 @@
       <div class="wt-panel card hidden" role="dialog" aria-label="Ajouter au suivi">
         <div class="wt-panel__header">
           <span class="logo-dot" aria-hidden="true"></span>
-          <span>Apply View</span>
+          <span>Postulo</span>
           <button type="button" class="icon-btn wt-close" aria-label="Fermer">${ICONS.close}</button>
         </div>
         <form class="wt-form">
@@ -473,7 +473,7 @@
         chrome.runtime.sendMessage({ action: 'openDashboard', id: candidature.id });
       } catch (e) {
         // Contexte invalidé (extension rechargée) : recharger la page suffit
-        console.warn("Apply View : rechargez la page pour réactiver l'extension.", e);
+        console.warn("Postulo : rechargez la page pour réactiver l'extension.", e);
       }
     });
   }

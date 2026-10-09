@@ -1,4 +1,4 @@
-# Apply View
+# Postulo
 
 Extension Chrome open source pour suivre ses candidatures : enregistrement d'offres en un clic, tableau Kanban, rappels avec notifications et export CSV. Les données restent dans le navigateur.
 

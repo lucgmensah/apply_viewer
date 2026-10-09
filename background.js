@@ -95,7 +95,7 @@ async function fireDueReminders(list, now) {
       type: 'basic',
       iconUrl: 'images/icon-128.png',
       title: reminderTitle(c),
-      message: [c.company, c.location].filter(Boolean).join(' · ') || 'Rappel Apply View',
+      message: [c.company, c.location].filter(Boolean).join(' · ') || 'Rappel Postulo',
       buttons,
       priority: 2
     });

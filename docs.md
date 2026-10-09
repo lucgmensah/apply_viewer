@@ -1,4 +1,4 @@
-# Apply View - Toutes vos candidatures, enfin au même endroit
+# Postulo - Toutes vos candidatures, enfin au même endroit
 
 ## Description courte
 
@@ -6,7 +6,7 @@
 
 ## Description
 
-Chercher un emploi, c'est souvent des dizaines d'offres ouvertes dans des onglets, un tableur oublié et des relances qui passent à la trappe. **Apply View** remet de l'ordre dans votre recherche, directement dans votre navigateur.
+Chercher un emploi, c'est souvent des dizaines d'offres ouvertes dans des onglets, un tableur oublié et des relances qui passent à la trappe. **Postulo** remet de l'ordre dans votre recherche, directement dans votre navigateur.
 
 Quand vous consultez une offre sur LinkedIn, Indeed ou Welcome to the Jungle, un bouton **« Suivre cette offre »** apparaît en bas de la page. Un clic suffit : le poste, l'entreprise et le lieu sont déjà remplis. L'offre rejoint votre tableau de suivi, et vous passez à la suivante.
 
@@ -14,7 +14,7 @@ Toutes vos candidatures se retrouvent sur un **tableau Kanban** clair, de « À 
 
 Vous voulez postuler plus tard ou relancer un recruteur dans une semaine ? Posez un **rappel** : à l'heure prévue, une notification vous le rappelle. Depuis la notification, vous pouvez ouvrir l'offre ou reporter au lendemain.
 
-## Ce qu'Apply View vous apporte
+## Ce que Postulo vous apporte
 
 - **Un clic pour enregistrer une offre.** Sur LinkedIn, Indeed et Welcome to the Jungle, l'offre est reconnue et ses informations sont pré-remplies. Sur les autres sites, la fenêtre de l'extension reprend le titre et le lien de la page.
 - **Fini les doublons.** L'extension vous signale une offre que vous suivez déjà, avec son statut actuel.
@@ -26,7 +26,7 @@ Vous voulez postuler plus tard ou relancer un recruteur dans une semaine ? Posez
 
 ## Vos données restent chez vous
 
-Apply View fonctionne **sans compte et sans serveur**. Vos candidatures sont enregistrées uniquement dans votre navigateur. Elles ne sont ni envoyées ni partagées, et l'extension ne contient aucun outil de suivi publicitaire. L'extension ne lit que les pages d'offres que vous consultez, au moment où vous le faites.
+Postulo fonctionne **sans compte et sans serveur**. Vos candidatures sont enregistrées uniquement dans votre navigateur. Elles ne sont ni envoyées ni partagées, et l'extension ne contient aucun outil de suivi publicitaire. L'extension ne lit que les pages d'offres que vous consultez, au moment où vous le faites.
 
 ## Pour qui ?
 
@@ -37,7 +37,7 @@ Apply View fonctionne **sans compte et sans serveur**. Vos candidatures sont enr
 ## Questions fréquentes
 
 **L'extension est-elle gratuite ?**
-Oui. Apply View est gratuite et open source.
+Oui. Postulo est gratuite et open source.
 
 **Quels sites sont compatibles ?**
 LinkedIn, Indeed et Welcome to the Jungle sont reconnus automatiquement. Sur tous les autres sites, vous pouvez ajouter une offre depuis l'icône de l'extension : le titre et le lien de la page sont repris.

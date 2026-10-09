@@ -64,12 +64,12 @@ test('le clic ouvre le panneau pré-rempli', async () => {
     return {
       open: panel && getComputedStyle(panel).display !== 'none',
       title: root.querySelector('#wt-title').value,
-      brand: root.querySelector('.wt-panel').textContent.includes('Apply View')
+      brand: root.querySelector('.wt-panel').textContent.includes('Postulo')
     };
   });
   assert.ok(r.open, 'panneau fermé');
   assert.ok(r.title.length > 0, 'titre vide');
-  assert.ok(r.brand, 'en-tête Apply View absent');
+  assert.ok(r.brand, 'en-tête Postulo absent');
   await shot(page, 'widget-open');
 });
 
