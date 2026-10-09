@@ -30,7 +30,7 @@ L'extension n'a ni dépendance ni étape de build : elle se charge directement d
 
 1. Cloner le dépôt :
    ```bash
-   git clone https://github.com/lucgmensah/apply_viewer.git
+   git clone https://github.com/lucgmensah/postulo_extension.git
    ```
 2. Ouvrir `chrome://extensions` et activer le **mode développeur** (en haut à droite).
 3. Cliquer sur **« Charger l'extension non empaquetée »** et choisir le dossier du dépôt (celui qui contient `manifest.json`).
