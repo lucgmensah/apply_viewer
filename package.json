@@ -4,7 +4,9 @@
   "description": "Outils de test de l'extension Postulo (l'extension elle-même n'a ni dépendance ni build).",
   "scripts": {
     "test": "node --test \"tests/unit/**/*.test.js\"",
-    "e2e": "node --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/**/*.e2e.js\""
+    "e2e": "node --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/**/*.e2e.js\"",
+    "pack": "node scripts/build_zip.js",
+    "showcase": "node scripts/generate_showcase.js"
   },
   "devDependencies": {
     "puppeteer": "^25.12.0"
