@@ -79,6 +79,14 @@ function matchesQuery(c) {
   return ['title', 'company', 'location', 'notes'].some((k) => (c[k] || '').toLowerCase().includes(state.query));
 }
 
+const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+function reminderTagHTML(value) {
+  const short = UI.formatReminderShort(value);
+  if (!short) return '';
+  return `<span class="tag tag--reminder kanban-card__reminder" title="Rappel : ${esc(UI.formatReminder(value))}">${ICON_CLOCK}${esc(short)}</span>`;
+}
+
 function cardHTML(c) {
   const meta = [c.location, UI.relativeTime(c.dateApplied)].filter(Boolean).map(esc).join(' · ');
   return `
@@ -89,6 +97,7 @@ function cardHTML(c) {
         <span class="kanban-card__meta">${meta}</span>
         ${c.salary ? `<span class="tag tag--neutral">${esc(c.salary)}</span>` : ''}
       </div>
+      ${reminderTagHTML(c.reminderAt)}
     </article>`;
 }
 
@@ -192,12 +201,15 @@ const FIELDS = {
   contactName: 'f-contact-name',
   contactEmail: 'f-contact-email',
   contactPhone: 'f-contact-phone',
-  notes: 'f-notes'
+  notes: 'f-notes',
+  reminderAt: 'f-reminder-input'
 };
 
 const panelEls = () => ({ panel: $('.panel'), backdrop: $('.panel-backdrop') });
 
 function setupPanel() {
+  $('#f-reminder').innerHTML = UI.reminderFieldHTML('f-reminder', '');
+  UI.bindReminderField($('#f-reminder'), 'f-reminder', () => {});
   $('.status-group').innerHTML = UI.STATUSES.map((s) => `
     <label class="status-option">
       <input type="radio" name="status" value="${s.id}">
@@ -327,6 +339,13 @@ function savePanel() {
     return;
   }
 
+  // Rappel : seulement s'il a été modifié, et dans le futur
+  if (fields.reminderAt !== state.panelSnapshot.reminderAt && !UI.isValidFutureReminder(fields.reminderAt)) {
+    document.getElementById(FIELDS.reminderAt).focus();
+    UI.toast('Choisissez une date à venir');
+    return;
+  }
+
   const editId = state.panelId !== 'new' ? state.panelId : null;
   const candidature = editId ? null : JobTracker.createCandidature(fields);
   const changes = Object.fromEntries(Object.entries(fields).filter(([k, v]) => v !== state.panelSnapshot[k]));
@@ -381,24 +400,19 @@ function deleteCandidature(id) {
 }
 
 // --- EXPORT CSV ---
-function handleExportCSV() {
-  if (state.list.length === 0) {
-    UI.toast('Aucune candidature à exporter.');
-    return;
-  }
-
+// Contenu CSV : séparateur point-virgule (Excel FR Windows)
+function buildCSV(list) {
   const headers = [
     'Titre du Poste', 'Entreprise', 'Statut', 'Date Action / Envoi', 'Lieu', 'Salaire',
-    "Lien de l'offre", 'Contact Nom', 'Contact Email', 'Contact Telephone', 'Notes'
+    "Lien de l'offre", 'Contact Nom', 'Contact Email', 'Contact Telephone', 'Rappel', 'Notes'
   ];
 
-  const rows = state.list.map((c) => [
+  const rows = list.map((c) => [
     c.title, c.company, UI.statusOf(c).label, c.dateApplied, c.location, c.salary,
-    c.url, c.contactName, c.contactEmail, c.contactPhone, c.notes
+    c.url, c.contactName, c.contactEmail, c.contactPhone, (c.reminderAt || '').replace('T', ' '), c.notes
   ]);
 
-  // Séparateur point-virgule (Excel FR Windows)
-  const csvContent = [
+  return [
     headers.join(';'),
     ...rows.map((row) => row.map((val) => {
       // Neutraliser les formules Excel (=, +, -, @) issues de contenus scrapés
@@ -408,9 +422,16 @@ function handleExportCSV() {
       return `"${text.replace(/"/g, '""').replace(/\r?\n|\r/g, ' ')}"`;
     }).join(';'))
   ].join('\r\n');
+}
+
+function handleExportCSV() {
+  if (state.list.length === 0) {
+    UI.toast('Aucune candidature à exporter.');
+    return;
+  }
 
   // BOM UTF-8 pour qu'Excel Windows reconnaisse l'encodage
-  const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['﻿' + buildCSV(state.list)], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

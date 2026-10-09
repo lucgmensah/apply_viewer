@@ -410,3 +410,63 @@ describe('Dashboard — corrections de la relecture', () => {
     await page.close();
   });
 });
+
+// --- Rappels ---
+const JT = (() => { global.window = global; require(path.join(__dirname, '..', '..', 'shared.js')); return globalThis.JobTracker; })();
+
+describe('Dashboard — rappels', () => {
+  test('pastille « Demain 9 h » puis Enregistrer : stockage et tag sur la carte', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s1"]');
+    await page.click('.panel .chip[data-preset="tomorrow"]');
+    assert.equal(await page.$eval('#f-reminder-input', (i) => i.value), JT.reminderPresets(new Date()).tomorrow);
+    await page.click('#panel-save');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, JT.reminderPresets(new Date()).tomorrow);
+    assert.ok(await page.$('.kanban-card[data-id="s1"] .tag--reminder'), 'tag de rappel absent');
+    await page.close();
+  });
+
+  test('date passée refusée', async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s2"]');
+    const past = JT.toReminderValue(new Date(Date.now() - 3600000));
+    await page.$eval('#f-reminder-input', (i, v) => { i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, past);
+    await page.click('#panel-save');
+    await sleep(300);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Choisissez une date à venir/);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's2').reminderAt || '', '');
+    assert.ok((await panelState(page)).open);
+    await page.close();
+  });
+
+  test("un rappel modifié ailleurs n'est pas écrasé par l'enregistrement", async () => {
+    await seed(browser, DATA);
+    const page = await openDashboard();
+    await sleep(300);
+    await page.click('.kanban-card[data-id="s3"]');
+    const external = JT.reminderPresets(new Date()).in1week;
+    await seed(browser, DATA.map((c) => (c.id === 's3' ? { ...c, reminderAt: external } : c)));
+    await sleep(400);
+    await page.type('#f-notes', 'Note');
+    await page.click('#panel-save');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's3').reminderAt, external);
+    await page.close();
+  });
+
+  test('export CSV : colonne « Rappel »', async () => {
+    await seed(browser, [{ ...base, id: 'r', title: 'Dev', company: 'Acme', status: 'wishlist', reminderAt: '2026-12-01T09:30' }]);
+    const page = await openDashboard();
+    await sleep(300);
+    const csv = await page.evaluate(() => buildCSV(state.list));
+    const [header, row] = csv.split('\r\n');
+    assert.ok(header.split(';').includes('Rappel'));
+    assert.match(row, /"2026-12-01 09:30"/);
+    await page.close();
+  });
+});
