@@ -231,7 +231,7 @@ describe('Popup — vue Détail', () => {
     assert.ok(r.visible);
     assert.equal(r.company, 'Acme');
     assert.equal(r.title, 'Développeur Front-End');
-    assert.deepEqual(r.rows, ['status', 'date', 'location', 'salary', 'contact', 'url']);
+    assert.deepEqual(r.rows, ['status', 'reminder', 'date', 'location', 'salary', 'contact', 'url']);
     assert.equal(r.mailto, 'mailto:sophie@acme.fr');
     assert.equal(r.urlTarget, '_blank');
     assert.equal(r.urlHref, 'https://www.linkedin.com/jobs/view/111');
@@ -244,7 +244,7 @@ describe('Popup — vue Détail', () => {
   test('les lignes vides ne sont pas affichées', async () => {
     const page = await openDetail('progress', 's3');
     const rows = await page.$$eval('#view-detail .field-row', (els) => els.map((r) => r.dataset.field));
-    assert.deepEqual(rows, ['status', 'date', 'location']);
+    assert.deepEqual(rows, ['status', 'reminder', 'date', 'location']);
     await page.close();
   });
 
@@ -344,6 +344,46 @@ describe('Popup — pré-remplissage depuis la page ouverte', () => {
     assert.ok(r.title.length > 0, 'titre vide');
     assert.match(r.url, /linkedin\.com/);
     assert.equal(r.status, 'wishlist');
+    await page.close();
+  });
+});
+
+// --- Rappels ---
+const JT = (() => { global.window = global; require('node:path'); require(require('node:path').join(__dirname, '..', '..', 'shared.js')); return globalThis.JobTracker; })();
+
+describe('Popup — rappel dans le détail', () => {
+  test('ligne « Aucun », raccourci, puis retrait', async () => {
+    await seed(browser, SAMPLE);
+    const page = await openDetail('progress', 's1');
+    assert.match(await page.$eval('[data-field="reminder"]', (r) => r.textContent), /Aucun/);
+
+    await page.click('#reminder-trigger');
+    assert.ok(await page.$('#reminder-editor:not(.hidden) #d-reminder-input'), 'éditeur fermé');
+    await page.click('#reminder-editor .chip[data-preset="in3days"]');
+    await sleep(400);
+    const expected = JT.reminderPresets(new Date()).in3days;
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, expected);
+    assert.match(await page.$eval('.toast', (t) => t.textContent), /Rappel programmé/);
+    assert.doesNotMatch(await page.$eval('[data-field="reminder"]', (r) => r.textContent), /Aucun/);
+    await shot(page, 'popup-detail-reminder');
+
+    await page.click('#reminder-trigger');
+    await page.click('#reminder-editor .chip[data-preset="clear"]');
+    await sleep(400);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's1').reminderAt, '');
+    assert.ok((await page.$$eval('.toast', (ts) => ts.map((t) => t.textContent))).some((t) => /Rappel retiré/.test(t)));
+    await page.close();
+  });
+
+  test('date passée : message en ligne, rien enregistré', async () => {
+    await seed(browser, SAMPLE);
+    const page = await openDetail('progress', 's2');
+    await page.click('#reminder-trigger');
+    const past = JT.toReminderValue(new Date(Date.now() - 3600000));
+    await page.$eval('#d-reminder-input', (i, v) => { i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, past);
+    await sleep(300);
+    assert.match(await page.$eval('#reminder-error', (e) => e.textContent), /Choisissez une date à venir/);
+    assert.equal((await readStore(browser)).find((c) => c.id === 's2').reminderAt || '', '');
     await page.close();
   });
 });

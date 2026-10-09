@@ -296,6 +296,16 @@ function renderDetail() {
             <div id="status-menu" class="status-menu hidden" role="menu" aria-label="Choisir un statut">${menu}</div>
           </span>
         </div>
+        <div class="field-row" data-field="reminder">
+          <span class="field-row__label">Rappel</span>
+          <span class="field-row__value">
+            <button type="button" id="reminder-trigger" class="link-btn" aria-expanded="false" aria-controls="reminder-editor">${esc(UI.formatReminder(c.reminderAt) || 'Aucun')}</button>
+          </span>
+        </div>
+        <div id="reminder-editor" class="reminder-editor hidden">
+          ${UI.reminderFieldHTML('d-reminder', c.reminderAt || '')}
+          <p id="reminder-error" class="form-error" role="alert"></p>
+        </div>
         ${row('date', 'Date', esc(formatDate(c.dateApplied)))}
         ${row('location', 'Lieu', esc(c.location))}
         ${row('salary', 'Salaire', esc(c.salary))}
@@ -309,6 +319,29 @@ function renderDetail() {
   $('#detail-back').addEventListener('click', () => go('list'));
   $('#detail-edit').addEventListener('click', () => openDashboard(c.id));
   bindStatusMenu(c.id);
+  bindReminderEditor(c.id);
+}
+
+// Rappel : chaque choix est enregistré immédiatement, comme le statut
+function bindReminderEditor(id) {
+  const trigger = $('#reminder-trigger');
+  const editor = $('#reminder-editor');
+  trigger.addEventListener('click', () => {
+    const open = editor.classList.toggle('hidden') === false;
+    trigger.setAttribute('aria-expanded', String(open));
+  });
+
+  UI.bindReminderField(editor, 'd-reminder', (value) => {
+    if (!UI.isValidFutureReminder(value)) {
+      $('#reminder-error').textContent = 'Choisissez une date à venir';
+      return;
+    }
+    JobTracker.update((list) => list.map((c) => (c.id === id ? { ...c, reminderAt: value } : c)), (saved, list) => {
+      state.list = list;
+      render();
+      UI.toast(value ? 'Rappel programmé' : 'Rappel retiré');
+    });
+  });
 }
 
 function bindStatusMenu(id) {
